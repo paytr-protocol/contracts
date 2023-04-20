@@ -138,7 +138,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
     * @notice This function can't be used while it's paused.
     * @param _asset Make sure the ERC20 token (base currency, USDC for example) is supported by Compound Finance V3. Using unsupported assets will result in an error.
     * @param _payee The receiver of the payment.
-    * @param _dueDate The due date of the payment, or invoice, in Epoch time. The payee wil receive the payment shortly after this date.
+    * @param _dueDate The due date of the payment, or invoice, in days. The payee wil receive the payment shortly after this date.
     * @param _amount The _asset amount in wei (10 USDC = 10**6 for example). Double check the number of decimals for each ERC20 token before paying the invoice.
     * @param _paymentReference Reference of the related payment.  
     * @param _cometAddress The address of the Comet contract you want to call. Check https://docs.compound.finance/#networks to get the correct contract address.
@@ -163,7 +163,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             uint256 dueDate;
             uint256 baseFee;
 
-            _dueDate != 0 ? dueDate = block.timestamp + _dueDate * 1 seconds : dueDate = _dueDate;
+            _dueDate != 0 ? dueDate = block.timestamp + _dueDate * 1 days : dueDate = _dueDate;
             allowedCometInfo[_cometAddress].decimals == 6 ? baseFee = 10**5 : baseFee = 10**17;
 
             IERC20(_asset).safeTransferFrom(msg.sender, address(this), _amount);                
