@@ -143,14 +143,14 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
     * @param _paymentReference Reference of the related payment.  
     * @param _cometAddress The address of the Comet contract you want to call. Check https://docs.compound.finance/#networks to get the correct contract address.
     * @dev Uses modifier IsNotPaid, nonReentrant and whenNotPaused.
-    * @dev The parameter _dueDate needs to be inserted in Epoch time.
-    * @dev The parameters _amount and _feeAmount need be inserted in wei. Double check the decimal input for each token.
+    * @dev The parameter _dueDate needs to be inserted in number of days (uint8).
+    * @dev The parameter _amount needs be inserted in wei. Double check the decimal input for each token.
     */
 
     function payInvoiceERC20(
         address _asset, //address base token, like USDC
         address _payee,
-        uint48 _dueDate,
+        uint8 _dueDate,
         uint256 _amount,
         bytes calldata _paymentReference,
         address _cometAddress
@@ -191,13 +191,13 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
     * @param _asset Make sure the ERC20 token (base currency, USDC for example) is supported by Compound Finance V3. Using unsupported assets will result in an error.
     * @param _payee The receiver of the payment.
     * @param _feeAddress When using an additional fee, this is the address that will receive the feeAmount. Requires msg.sender address when param _feeAmount == 0.
-    * @param _dueDate The due date of the payment, or invoice, in Epoch time. The payee wil receive the payment shortly after this date.
+    * @param _dueDate The due date of the payment, or invoice, in days
     * @param _amount The _asset amount in wei (10 USDC = 10**6 for example). Double check the number of decimals for each ERC20 token before paying the invoice.
     * @param _feeAmount The total _asset fee amount in wei.
     * @param _paymentReference Reference of the related payment.  
     * @param _cometAddress The address of the Comet contract you want to call. Check https://docs.compound.finance/#networks to get the correct contract address.
     * @dev Uses modifier IsNotPaid, nonReentrant and whenNotPaused.
-    * @dev The parameter _dueDate needs to be inserted in Epoch time.
+    * @dev The parameter _dueDate needs to be inserted in number of days (uint8).
     * @dev The parameters _amount and _feeAmount need be inserted in wei. Double check the decimal input for each token.
     */
 
@@ -205,7 +205,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         address _asset, //address base token, like USDC
         address _payee,
         address _feeAddress,
-        uint48 _dueDate,
+        uint8 _dueDate,
         uint256 _amount,
         uint256 _feeAmount,
         bytes calldata _paymentReference,
