@@ -224,7 +224,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             _dueDate != 0 ? dueDate = block.timestamp + _dueDate * 1 seconds : dueDate = _dueDate;
             allowedCometInfo[_cometAddress].decimals == 6 ? baseFee = 10**5 : baseFee = 10**17;
 
-            IERC20(_asset).safeTransferFrom(msg.sender, address(this), baseFee + _amount + _feeAmount);                
+            IERC20(_asset).safeTransferFrom(msg.sender, address(this), _amount + _feeAmount);              
             IERC20(_asset).safeApprove(_cometAddress, _amount + _feeAmount);
             IERC20(_asset).safeTransferFrom(msg.sender, owner(), baseFee);
 
