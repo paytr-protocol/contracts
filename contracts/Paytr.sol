@@ -11,6 +11,11 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 interface IComet {
     function supply(address asset, uint amount) external;
     function withdraw(address asset, uint amount) external;
+    function baseToken() external view returns (address);
+}
+
+interface ICometRewards {
+  function claim(address comet, address src, bool shouldAccrue) external;
 }
 
 interface IERC20FeeProxy {
@@ -158,6 +163,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
 
             require(_amount != 0, "0 Amount");
             require(allowedCometInfo[_cometAddress].allowed == true, "Invalid Comet address"); //prevents the use of malicious Comet contracts
+            require(IComet(_cometAddress).baseToken() == _asset, "Invalid asset"); //requires the use of the correct base asset for the Comet address
             require(_payee != address(0), "Payee is 0 address");
 
             uint256 dueDate;
@@ -214,6 +220,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
 
             require(_amount != 0, "0 Amount");
             require(allowedCometInfo[_cometAddress].allowed == true, "Invalid Comet address"); //prevents the use of malicious Comet contracts
+            require(IComet(_cometAddress).baseToken() == _asset, "Invalid asset"); //requires the use of the correct base asset for the Comet address
             require(_payee != address(0), "Payee is 0 address");
             require(_feeAddress != address(0), "Fee address is 0 address");
             require(_feeAmount != 0, "0 Fee amount");
@@ -224,7 +231,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             _dueDate != 0 ? dueDate = block.timestamp + _dueDate * 1 seconds : dueDate = _dueDate;
             allowedCometInfo[_cometAddress].decimals == 6 ? baseFee = 10**5 : baseFee = 10**17;
 
-            IERC20(_asset).safeTransferFrom(msg.sender, address(this), _amount + _feeAmount);              
+            IERC20(_asset).safeTransferFrom(msg.sender, address(this), _amount + _feeAmount);          
             IERC20(_asset).safeApprove(_cometAddress, _amount + _feeAmount);
             IERC20(_asset).safeTransferFrom(msg.sender, owner(), baseFee);
 
@@ -339,6 +346,11 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             IERC20(assetsToRedeem[j].asset).safeTransfer(owner(), _balanceAfterRedeeming);
             ++j;
         }      
+    }
+
+    function claimCompRewards(address _cometAddress) public onlyOwner {
+        ICometRewards(_cometAddress).claim(_cometAddress, address(this), true);
+        IERC20(_cometAddress).safeTransfer(owner(), IERC20(_cometAddress).balanceOf(address(this)));
     }
 
     function addCometAddress(address _cometAddressToAdd, uint8 _decimals) public onlyOwner {
