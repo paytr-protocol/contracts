@@ -1,8 +1,3 @@
-require("dotenv").config();
-const HDWalletProvider = require("@truffle/hdwallet-provider");
-
-const infuraApi = process.env.INFURA_API;
-
 module.exports = {
   compilers: {
     solc: {
@@ -19,12 +14,5 @@ module.exports = {
   },
   dashboard: {
     port: 24012,  
-  },
-  
-  plugins: [
-    'truffle-plugin-verify'
-  ],
-  api_keys: {
-    etherscan: process.env.ETHERSCAN_API_KEY
   }
 }
