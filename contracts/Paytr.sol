@@ -297,6 +297,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
 
         for (; i < redeemDataLength;) {
             bytes memory _paymentReference = redeemData[i].paymentReference;
+            require(paymentMapping[_paymentReference].amount != 0,"Unknown payment reference"); //check to see if payment reference to be paid out is present in the contract
             address payable _payee = payable(redeemData[i].payee);
             address payable _payer = payable(redeemData[i].payer);
             address payable _feeAddress = payable(redeemData[i].feeAddress);
