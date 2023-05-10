@@ -104,20 +104,12 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         See function payOutERC20Invoice in this contract for more details.
     */
     mapping(address => bool) public allowedRequestNetworkFeeAddresses;
-  
-    /**
-     * @notice modifier checks if invoice hasn't been paid already, to prevent double payments.
-     */
-    modifier IsNotPaid(bytes memory _paymentReference) {
-        require(paymentMapping[_paymentReference].amount == 0, "Payment reference already used");
-        _;
-    }
 
     /**
     * @notice modifier checks if payment is present in contract.
     */
     modifier IsInContract(bytes memory _paymentReference) {       
-        require(paymentMapping[_paymentReference].amount > 0, "No prepayment found");
+        require(paymentMapping[_paymentReference].amount != 0, "No prepayment found");
         _;
     }
 
@@ -159,9 +151,11 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         uint256 _amount,
         bytes calldata _paymentReference,
         address _cometAddress
-        ) public IsNotPaid(_paymentReference) nonReentrant whenNotPaused {
+        ) public nonReentrant whenNotPaused {
 
             require(_amount != 0, "0 Amount");
+            require(paymentMapping[_paymentReference].payer != msg.sender,"Payment reference already used");
+            require(paymentMapping[_paymentReference].payee != _payee,"Payment reference already used");
             require(allowedCometInfo[_cometAddress].allowed == true, "Invalid Comet address"); //prevents the use of malicious Comet contracts
             require(IComet(_cometAddress).baseToken() == _asset, "Invalid asset"); //requires the use of the correct base asset for the Comet address
             require(_payee != address(0), "Payee is 0 address");
@@ -216,9 +210,11 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         uint256 _feeAmount,
         bytes calldata _paymentReference,
         address _cometAddress
-        ) public IsNotPaid(_paymentReference) nonReentrant whenNotPaused {
+        ) public nonReentrant whenNotPaused {
 
             require(_amount != 0, "0 Amount");
+            require(paymentMapping[_paymentReference].payer != msg.sender,"Payment reference already used");
+            require(paymentMapping[_paymentReference].payee != _payee,"Payment reference already used");
             require(allowedCometInfo[_cometAddress].allowed == true, "Invalid Comet address"); //prevents the use of malicious Comet contracts
             require(IComet(_cometAddress).baseToken() == _asset, "Invalid asset"); //requires the use of the correct base asset for the Comet address
             require(_payee != address(0), "Payee is 0 address");
@@ -228,7 +224,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             uint256 dueDate;
             uint256 baseFee;
 
-            _dueDate != 0 ? dueDate = block.timestamp + _dueDate * 1 seconds : dueDate = _dueDate;
+            _dueDate != 0 ? dueDate = block.timestamp + _dueDate * 1 days : dueDate = _dueDate;
             allowedCometInfo[_cometAddress].decimals == 6 ? baseFee = 10**5 : baseFee = 10**17;
 
             IERC20(_asset).safeTransferFrom(msg.sender, address(this), _amount + _feeAmount);          
@@ -306,11 +302,8 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             uint256 _feeAmount = redeemData[i].feeAmount;
             uint256 _interestAmount = redeemData[i].interestAmount * 9000 / 10000;
             
-            /*
-            Update state before transferring funds
-            */
+            //Update state before transferring funds
             paymentMapping[_paymentReference].amount = 0;
-            delete paymentMapping[_paymentReference];
             
             /*
             Transfer funds to payer, payee and feeAddress. Payments originating from Request Network call the ERC20FeeProxy contract.
