@@ -3,6 +3,7 @@ const truffleAssert = require('truffle-assertions');
 
 const Paytr = artifacts.require("Paytr");
 const CometAbi = [{"inputs":[{"internalType":"address","name":"_logic","type":"address"},{"internalType":"address","name":"admin_","type":"address"},{"internalType":"bytes","name":"_data","type":"bytes"}],"stateMutability":"payable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"previousAdmin","type":"address"},{"indexed":false,"internalType":"address","name":"newAdmin","type":"address"}],"name":"AdminChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"beacon","type":"address"}],"name":"BeaconUpgraded","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"implementation","type":"address"}],"name":"Upgraded","type":"event"},{"stateMutability":"payable","type":"fallback"},{"inputs":[],"name":"admin","outputs":[{"internalType":"address","name":"admin_","type":"address"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newAdmin","type":"address"}],"name":"changeAdmin","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"implementation","outputs":[{"internalType":"address","name":"implementation_","type":"address"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newImplementation","type":"address"}],"name":"upgradeTo","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newImplementation","type":"address"},{"internalType":"bytes","name":"data","type":"bytes"}],"name":"upgradeToAndCall","outputs":[],"stateMutability":"payable","type":"function"},{"stateMutability":"payable","type":"receive"}]
+//const UsdcAbi = [{"inputs":[{"internalType":"address","name":"implementationContract","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"previousAdmin","type":"address"},{"indexed":false,"internalType":"address","name":"newAdmin","type":"address"}],"name":"AdminChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"implementation","type":"address"}],"name":"Upgraded","type":"event"},{"stateMutability":"payable","type":"fallback"},{"inputs":[],"name":"admin","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"newAdmin","type":"address"}],"name":"changeAdmin","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"implementation","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"newImplementation","type":"address"}],"name":"upgradeTo","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newImplementation","type":"address"},{"internalType":"bytes","name":"data","type":"bytes"}],"name":"upgradeToAndCall","outputs":[],"stateMutability":"payable","type":"function"}]
 const Erc20Abi = [{ "constant": true, "inputs": [], "name": "name", "outputs": [ { "name": "", "type": "string" } ], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [ { "name": "_spender", "type": "address" }, { "name": "_value", "type": "uint256" } ], "name": "approve", "outputs": [ { "name": "", "type": "bool" } ], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": true, "inputs": [], "name": "totalSupply", "outputs": [ { "name": "", "type": "uint256" } ], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [ { "name": "_from", "type": "address" }, { "name": "_to", "type": "address" }, { "name": "_value", "type": "uint256" } ], "name": "transferFrom", "outputs": [ { "name": "", "type": "bool" } ], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": true, "inputs": [], "name": "decimals", "outputs": [ { "name": "", "type": "uint8" } ], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": true, "inputs": [ { "name": "_owner", "type": "address" } ], "name": "balanceOf", "outputs": [ { "name": "balance", "type": "uint256" } ], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": true, "inputs": [], "name": "symbol", "outputs": [ { "name": "", "type": "string" } ], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [ { "name": "_to", "type": "address" }, { "name": "_value", "type": "uint256" } ], "name": "transfer", "outputs": [ { "name": "", "type": "bool" } ], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": true, "inputs": [ { "name": "_owner", "type": "address" }, { "name": "_spender", "type": "address" } ], "name": "allowance", "outputs": [ { "name": "", "type": "uint256" } ], "payable": false, "stateMutability": "view", "type": "function" }, { "payable": true, "stateMutability": "payable", "type": "fallback" }, { "anonymous": false, "inputs": [ { "indexed": true, "name": "owner", "type": "address" }, { "indexed": true, "name": "spender", "type": "address" }, { "indexed": false, "name": "value", "type": "uint256" } ], "name": "Approval", "type": "event" }, { "anonymous": false, "inputs": [ { "indexed": true, "name": "from", "type": "address" }, { "indexed": true, "name": "to", "type": "address" }, { "indexed": false, "name": "value", "type": "uint256" } ], "name": "Transfer", "type": "event" }]
 const CometContract = new web3.eth.Contract(CometAbi, "0x3EE77595A8459e93C2888b13aDB354017B198188");
 const USDCContract = new web3.eth.Contract(Erc20Abi, "0x07865c6E87B9F70255377e024ace6630C1Eaa37F"); //
@@ -215,4 +216,95 @@ contract("Paytr", (accounts) => {
       {from: accounts[2]}
     ));
   });
+describe("Normal payment flow + payout of due invoice", () => {
+  let totalPaid;
+  let totalFees;
+  let totalAmountToRedeem;
+    it("the contract needs to pay out all due invoices", async () => {
+      //Approval
+      await USDCContract.methods.approve(instance.address, 1000000000000).send({from: whaleAccount});
+
+      //USDC payment
+
+      await instance.payInvoiceERC20(
+        USDCContract._address,
+        accounts[6],
+        30,
+        amountToPay,
+        "0x194e56332d32347777",
+        CometContract._address,
+        {from: whaleAccount}
+      );
+      totalPaid += amountToPay;
+      //end of USDC payment
+
+      //USDC payment with fee
+      await instance.payInvoiceERC20WithFee(
+        USDCContract._address,
+        accounts[6],
+        accounts[3],
+        30,
+        amountToPay,
+        feeAmount,
+        "0x194e56332d32347778",
+        CometContract._address,
+        {from: whaleAccount}
+      );
+      console.log(amountToPay);
+      totalPaid += amountToPay;
+      console.log("Total paid: ",totalPaid);
+      totalFees += feeAmount;
+      totalAmountToRedeem = new web3.utils.BN(totalPaid + totalFees).toString();
+      console.log("Total to redeem: ",totalAmountToRedeem);
+      //end of USDC payment with fee
+      
+      //USDC payment with 0 due date
+      // await instance.payInvoiceERC20(
+      //   USDCContract._address,
+      //   accounts[6],
+      //   0,
+      //   amountToPay,
+      //   "0x394e56332d32341111",
+      //   CometContract._address,
+      //   {from: whaleAccount}
+      // );
+
+      //update due date of payment ref. 0x494e56332d32343035
+      // let currentTime = Math.floor(Date.now() / 1000);
+      // let newDueDate = currentTime + 604800 //1 week in seconds;
+      // await instance.updateDueDate(
+      //   "0x394e56332d32341111",
+      //   newDueDate,
+      //   {from: whaleAccount}
+      // );
+      //end of update due date
+
+      //pay 3 payment references
+    //   struct totalPerAssetToRedeem {        
+    //     address asset;
+    //     address cometAddress;
+    //     uint256 amount;        
+    // }
+    await instance.payOutERC20Invoice([
+      [amountToPay,0,0, whaleAccount, accounts[6], USDCContract._address, CometContract._address, whaleAccount, "0x194e56332d32347777"],
+      [amountToPay,0,feeAmount, whaleAccount, accounts[6], USDCContract._address, CometContract._address, whaleAccount, "0x194e56332d32347778"]
+    ],
+      [[USDCContract._address, CometContract._address, amountToPay*2+feeAmount]]
+    );
+
+    //console.log(config.provider)
+    // const provider = web3.setProvider(instance.provider);
+    console.log("start", await config.provider.send(
+      {
+        jsonrpc: "2.0",
+        method: "eth_blockNumber",
+        params:[]
+      }
+      ));
+    await config.provider.send("evm_mine", [{blocks: 5}] ); // mines 5 blocks
+    console.log("end", await config.provider.send("eth_blockNumber"));
+
+
+    });
+  });//end describe
 });
