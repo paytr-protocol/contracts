@@ -216,15 +216,19 @@ contract("Paytr", (accounts) => {
       {from: accounts[2]}
     ));
   });
-describe("Normal payment flow + payout of due invoice", () => {
-  let totalPaid;
-  let totalFees;
-  let totalAmountToRedeem;
-    it("the contract needs to pay out all due invoices", async () => {
+
+  describe("Test same payment reference", () => {
+    it("should be able to use the same payment reference twice, for different payees", async () => {
+      //send funds to accounts[4]
+      let accounts4BalanceBefore = await USDCContract.methods.balanceOf(accounts[4]).call();
+      await USDCContract.methods.transfer(accounts[4], 500000000000).send({from: whaleAccount});
+      let accounts4BalanceAfter = await USDCContract.methods.balanceOf(accounts[4]).call();
+      assert(accounts4BalanceBefore < accounts4BalanceAfter);
       //Approval
       await USDCContract.methods.approve(instance.address, 1000000000000).send({from: whaleAccount});
+      await USDCContract.methods.approve(instance.address, 1000000000000).send({from: accounts[4]});
 
-      //USDC payment
+      //USDC payment first payer
 
       await instance.payInvoiceERC20(
         USDCContract._address,
@@ -235,76 +239,160 @@ describe("Normal payment flow + payout of due invoice", () => {
         CometContract._address,
         {from: whaleAccount}
       );
-      totalPaid += amountToPay;
-      //end of USDC payment
 
-      //USDC payment with fee
+      //USDC payment second payer
+
+      await instance.payInvoiceERC20(
+        USDCContract._address,
+        accounts[7],
+        30,
+        amountToPay,
+        "0x194e56332d32347777",
+        CometContract._address,
+        {from: accounts[4]}
+      );
+
+      //USDC payment first payer with fee
+
       await instance.payInvoiceERC20WithFee(
         USDCContract._address,
         accounts[6],
-        accounts[3],
+        accounts[9],
         30,
         amountToPay,
         feeAmount,
-        "0x194e56332d32347778",
+        "0x194e56332d323400001",
         CometContract._address,
         {from: whaleAccount}
       );
-      console.log(amountToPay);
-      totalPaid += amountToPay;
-      console.log("Total paid: ",totalPaid);
-      totalFees += feeAmount;
-      totalAmountToRedeem = new web3.utils.BN(totalPaid + totalFees).toString();
-      console.log("Total to redeem: ",totalAmountToRedeem);
-      //end of USDC payment with fee
       
-      //USDC payment with 0 due date
-      // await instance.payInvoiceERC20(
-      //   USDCContract._address,
-      //   accounts[6],
-      //   0,
-      //   amountToPay,
-      //   "0x394e56332d32341111",
-      //   CometContract._address,
-      //   {from: whaleAccount}
-      // );
+      //USDC payment second payer with fee
 
-      //update due date of payment ref. 0x494e56332d32343035
-      // let currentTime = Math.floor(Date.now() / 1000);
-      // let newDueDate = currentTime + 604800 //1 week in seconds;
-      // await instance.updateDueDate(
-      //   "0x394e56332d32341111",
-      //   newDueDate,
-      //   {from: whaleAccount}
-      // );
-      //end of update due date
+      await instance.payInvoiceERC20WithFee(
+        USDCContract._address,
+        accounts[2],
+        accounts[9],
+        30,
+        amountToPay,
+        feeAmount,
+        "0x194e56332d323400001",
+        CometContract._address,
+        {from: accounts[4]}
+      );
 
-      //pay 3 payment references
-    //   struct totalPerAssetToRedeem {        
-    //     address asset;
-    //     address cometAddress;
-    //     uint256 amount;        
-    // }
-    await instance.payOutERC20Invoice([
-      [amountToPay,0,0, whaleAccount, accounts[6], USDCContract._address, CometContract._address, whaleAccount, "0x194e56332d32347777"],
-      [amountToPay,0,feeAmount, whaleAccount, accounts[6], USDCContract._address, CometContract._address, whaleAccount, "0x194e56332d32347778"]
-    ],
-      [[USDCContract._address, CometContract._address, amountToPay*2+feeAmount]]
-    );
+    })//end it(...)
+    it("should revert wehn trying to use the same payment reference twice for the same payee", async () => {
+      
+      await instance.payInvoiceERC20(
+        USDCContract._address,
+        accounts[6],
+        30,
+        400000,
+        "0x23e56332d3131516",
+        CometContract._address,
+        {from: whaleAccount}
+      );
 
-    //console.log(config.provider)
-    // const provider = web3.setProvider(instance.provider);
-    console.log("start", await config.provider.send(
-      {
-        jsonrpc: "2.0",
-        method: "eth_blockNumber",
-        params:[]
-      }
+      await truffleAssert.reverts(instance.payInvoiceERC20(
+        USDCContract._address,
+        accounts[6],
+        30,
+        amountToPay,
+        "0x23e56332d3131516",
+        CometContract._address,
+        {from: whaleAccount}
       ));
-    await config.provider.send("evm_mine", [{blocks: 5}] ); // mines 5 blocks
-    console.log("end", await config.provider.send("eth_blockNumber"));
 
 
-    });
-  });//end describe
+
+    })//end it(...)
+  })//end describe
+
+
+// describe("Normal payment flow + payout of due invoice", () => {
+//   let totalPaid;
+//   let totalFees;
+//   let totalAmountToRedeem;
+//     it("the contract needs to pay out all due invoices", async () => {
+//       //Approval
+//       await USDCContract.methods.approve(instance.address, 1000000000000).send({from: whaleAccount});
+
+//       //USDC payment
+
+//       await instance.payInvoiceERC20(
+//         USDCContract._address,
+//         accounts[6],
+//         30,
+//         amountToPay,
+//         "0x194e56332d32347777",
+//         CometContract._address,
+//         {from: whaleAccount}
+//       );
+//       totalPaid += amountToPay;
+//       //end of USDC payment
+
+//       //USDC payment with fee
+//       await instance.payInvoiceERC20WithFee(
+//         USDCContract._address,
+//         accounts[6],
+//         accounts[3],
+//         30,
+//         amountToPay,
+//         feeAmount,
+//         "0x194e56332d32347778",
+//         CometContract._address,
+//         {from: whaleAccount}
+//       );
+//       console.log(amountToPay);
+//       totalPaid = amountToPay*2;
+//       console.log("Total paid: ",totalPaid);
+//       totalFees += feeAmount;
+//       totalAmountToRedeem = new web3.utils.BN(totalPaid + totalFees).toString();
+//       console.log("Total to redeem: ",totalAmountToRedeem);
+//       //end of USDC payment with fee
+      
+//       //USDC payment with 0 due date
+//       // await instance.payInvoiceERC20(
+//       //   USDCContract._address,
+//       //   accounts[6],
+//       //   0,
+//       //   amountToPay,
+//       //   "0x394e56332d32341111",
+//       //   CometContract._address,
+//       //   {from: whaleAccount}
+//       // );
+
+//       //update due date of payment ref. 0x394e56332d32341111
+//       // let currentTime = Math.floor(Date.now() / 1000);
+//       // let newDueDate = currentTime + 604800 //1 week in seconds;
+//       // await instance.updateDueDate(
+//       //   "0x394e56332d32341111",
+//       //   newDueDate,
+//       //   {from: whaleAccount}
+//       // );
+//       //end of update due date
+
+//       //pay 3 payment references
+//     //   struct totalPerAssetToRedeem {        
+//     //     address asset;
+//     //     address cometAddress;
+//     //     uint256 amount;        
+//     // }
+//     await instance.payOutERC20Invoice([
+//       [amountToPay,0,0, whaleAccount, accounts[6], USDCContract._address, CometContract._address, whaleAccount, "0x194e56332d32347777"],
+//       [amountToPay,0,feeAmount, whaleAccount, accounts[6], USDCContract._address, CometContract._address, whaleAccount, "0x194e56332d32347778"]
+//     ],
+//       [[USDCContract._address, CometContract._address, amountToPay*2+feeAmount]]
+//     );
+
+    
+//     const provider = config.provider;
+//     console.log("Provider: ",provider)
+//     console.log("start", await provider.send("eth_blockNumber"));
+//     await provider.send("evm_mine", [{blocks: 5}] ); // mines 5 blocks
+//     console.log("end", await provider.send("eth_blockNumber"));
+
+
+//     });
+//   });//end describe
 });
