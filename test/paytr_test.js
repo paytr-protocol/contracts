@@ -309,90 +309,89 @@ contract("Paytr", (accounts) => {
   })//end describe
 
 
-// describe("Normal payment flow + payout of due invoice", () => {
-//   let totalPaid;
-//   let totalFees;
-//   let totalAmountToRedeem;
-//     it("the contract needs to pay out all due invoices", async () => {
-//       //Approval
-//       await USDCContract.methods.approve(instance.address, 1000000000000).send({from: whaleAccount});
+describe("Normal payment flow + payout of due invoice", () => {
+  let totalPaid;
+  let totalFees;
+  let totalAmountToRedeem;
+    it("the contract needs to pay out all due invoices", async () => {
+      //Approval
+      // await USDCContract.methods.approve(instance.address, 1000000000000).send({from: whaleAccount});
 
-//       //USDC payment
+      // //USDC payment
 
-//       await instance.payInvoiceERC20(
-//         USDCContract._address,
-//         accounts[6],
-//         30,
-//         amountToPay,
-//         "0x194e56332d32347777",
-//         CometContract._address,
-//         {from: whaleAccount}
-//       );
-//       totalPaid += amountToPay;
-//       //end of USDC payment
+      // await instance.payInvoiceERC20(
+      //   USDCContract._address,
+      //   accounts[6],
+      //   30,
+      //   amountToPay,
+      //   "0x194e56332d32347777",
+      //   CometContract._address,
+      //   {from: whaleAccount}
+      // );
+      // totalPaid += amountToPay;
+      // //end of USDC payment
 
-//       //USDC payment with fee
-//       await instance.payInvoiceERC20WithFee(
-//         USDCContract._address,
-//         accounts[6],
-//         accounts[3],
-//         30,
-//         amountToPay,
-//         feeAmount,
-//         "0x194e56332d32347778",
-//         CometContract._address,
-//         {from: whaleAccount}
-//       );
-//       console.log(amountToPay);
-//       totalPaid = amountToPay*2;
-//       console.log("Total paid: ",totalPaid);
-//       totalFees += feeAmount;
-//       totalAmountToRedeem = new web3.utils.BN(totalPaid + totalFees).toString();
-//       console.log("Total to redeem: ",totalAmountToRedeem);
-//       //end of USDC payment with fee
+      // //USDC payment with fee
+      // await instance.payInvoiceERC20WithFee(
+      //   USDCContract._address,
+      //   accounts[6],
+      //   accounts[3],
+      //   30,
+      //   amountToPay,
+      //   feeAmount,
+      //   "0x194e56332d32347778",
+      //   CometContract._address,
+      //   {from: whaleAccount}
+      // );
+      // console.log(amountToPay);
+      // totalPaid = amountToPay*2;
+      // console.log("Total paid: ",totalPaid);
+      // totalFees += feeAmount;
+      // totalAmountToRedeem = new web3.utils.BN(totalPaid + totalFees).toString();
+      // console.log("Total to redeem: ",totalAmountToRedeem);
+      //end of USDC payment with fee
       
-//       //USDC payment with 0 due date
-//       // await instance.payInvoiceERC20(
-//       //   USDCContract._address,
-//       //   accounts[6],
-//       //   0,
-//       //   amountToPay,
-//       //   "0x394e56332d32341111",
-//       //   CometContract._address,
-//       //   {from: whaleAccount}
-//       // );
+      //USDC payment with 0 due date
+      // await instance.payInvoiceERC20(
+      //   USDCContract._address,
+      //   accounts[6],
+      //   0,
+      //   amountToPay,
+      //   "0x394e56332d32341111",
+      //   CometContract._address,
+      //   {from: whaleAccount}
+      // );
 
-//       //update due date of payment ref. 0x394e56332d32341111
-//       // let currentTime = Math.floor(Date.now() / 1000);
-//       // let newDueDate = currentTime + 604800 //1 week in seconds;
-//       // await instance.updateDueDate(
-//       //   "0x394e56332d32341111",
-//       //   newDueDate,
-//       //   {from: whaleAccount}
-//       // );
-//       //end of update due date
+      //update due date of payment ref. 0x394e56332d32341111
+      // let currentTime = Math.floor(Date.now() / 1000);
+      // let newDueDate = currentTime + 604800 //1 week in seconds;
+      // await instance.updateDueDate(
+      //   "0x394e56332d32341111",
+      //   newDueDate,
+      //   {from: whaleAccount}
+      // );
+      //end of update due date
 
-//       //pay 3 payment references
-//     //   struct totalPerAssetToRedeem {        
-//     //     address asset;
-//     //     address cometAddress;
-//     //     uint256 amount;        
-//     // }
-//     await instance.payOutERC20Invoice([
-//       [amountToPay,0,0, whaleAccount, accounts[6], USDCContract._address, CometContract._address, whaleAccount, "0x194e56332d32347777"],
-//       [amountToPay,0,feeAmount, whaleAccount, accounts[6], USDCContract._address, CometContract._address, whaleAccount, "0x194e56332d32347778"]
-//     ],
-//       [[USDCContract._address, CometContract._address, amountToPay*2+feeAmount]]
-//     );
+      //pay 3 payment references
+    //   struct totalPerAssetToRedeem {        
+    //     address asset;
+    //     address cometAddress;
+    //     uint256 amount;        
+    // }
+    // await instance.payOutERC20Invoice([
+    //   [amountToPay,0,0, whaleAccount, accounts[6], USDCContract._address, CometContract._address, whaleAccount, "0x194e56332d32347777"],
+    //   [amountToPay,0,feeAmount, whaleAccount, accounts[6], USDCContract._address, CometContract._address, whaleAccount, "0x194e56332d32347778"]
+    // ],
+    //   [[USDCContract._address, CometContract._address, amountToPay*2+feeAmount]]
+    // );
 
     
-//     const provider = config.provider;
-//     console.log("Provider: ",provider)
-//     console.log("start", await provider.send("eth_blockNumber"));
-//     await provider.send("evm_mine", [{blocks: 5}] ); // mines 5 blocks
-//     console.log("end", await provider.send("eth_blockNumber"));
+    const provider = config.provider;
+    console.log("start", await provider.request({method: 'eth_blockNumber', params: []}));
+    await provider.request({method: 'evm_mine', params: [{blocks:5}]}); // mines 5 blocks
+    console.log("end", await provider.request({method: 'eth_blockNumber', params: []}));
 
 
-//     });
-//   });//end describe
+    });
+  });//end describe
 });
