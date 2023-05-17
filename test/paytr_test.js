@@ -408,7 +408,7 @@ describe("Normal payment flow + payout of due invoice", () => {
     );
     let contractBalanceAfterPayout = await cTokenContract.methods.balanceOf(instance.address).call();
     console.log("Contract cToken balance after payout: ",contractBalanceAfterPayout);
-    //assert(contractBalanceAfterPayout <= 3);
+    assert(contractBalanceAfterPayout <= 5);
 
     
     
