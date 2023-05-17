@@ -5,10 +5,10 @@ module.exports = {
     }
   },
   networks: {
-    myFork: {
+    develop: {
       host: "127.0.0.1",
       port: 8545,
-      network_id: "5", // match any network
+      network_id: "*", // match any network
       websockets: true,
     },  
   },
