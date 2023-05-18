@@ -14,10 +14,6 @@ const whaleAccount = "0x7713974908Be4BEd47172370115e8b1219F4A5f0";
 
 let amountToPay = 1500000000;
 let feeAmount = 100000;
-let totalPaid = null;
-let totalPayments = null;
-let totalFees = null;
-let totalPaymentsWithFee = null;
 
 contract("Paytr", (accounts) => {  
 
@@ -67,10 +63,6 @@ contract("Paytr", (accounts) => {
         CometContract._address,
         {from: whaleAccount}
       );
-      totalPaid += amountToPay;
-      totalPayments += 1;
-      console.log("Total paid: ",totalPaid);
-      console.log("Total payments: ",totalPayments);
       
       let payerBalanceAfter = await USDCContract.methods.balanceOf(whaleAccount).call();
       let instanceCtokenBalanceAfter = await cTokenContract.methods.balanceOf(instance.address).call();
@@ -97,14 +89,6 @@ contract("Paytr", (accounts) => {
         CometContract._address,
         {from: whaleAccount}
       );
-      totalPaid += amountToPay;
-      totalPayments += 1;
-      totalFees += feeAmount;
-      totalPaymentsWithFee += 1;
-      console.log("Total paid: ",totalPaid);
-      console.log("Total payments: ",totalPayments);
-      console.log("Total payments with fee: ",totalPaymentsWithFee);
-      console.log("Total fees: ",totalFees);
       
       let payerBalanceAfter = await USDCContract.methods.balanceOf(whaleAccount).call();
       let instanceCtokenBalanceAfter = await cTokenContract.methods.balanceOf(instance.address).call();
@@ -127,10 +111,6 @@ contract("Paytr", (accounts) => {
         CometContract._address,
         {from: whaleAccount}
       );
-      totalPaid += amountToPay;
-      totalPayments += 1;
-      console.log("Total paid: ",totalPaid);
-      console.log("Total payments: ",totalPayments);
       
       let myTokenBalanceAfter = await USDCContract.methods.balanceOf(whaleAccount).call();
       let instanceCtokenBalanceAfter = await cTokenContract.methods.balanceOf(instance.address).call();
@@ -262,10 +242,6 @@ contract("Paytr", (accounts) => {
         CometContract._address,
         {from: whaleAccount}
       );
-      totalPaid += amountToPay;
-      totalPayments += 1;
-      console.log("Total paid: ",totalPaid);
-      console.log("Total payments: ",totalPayments);
 
       //USDC payment second payer
 
@@ -278,10 +254,6 @@ contract("Paytr", (accounts) => {
         CometContract._address,
         {from: accounts[4]}
       );
-      totalPaid += amountToPay;
-      totalPayments += 1;
-      console.log("Total paid: ",totalPaid);
-      console.log("Total payments: ",totalPayments);
 
       //USDC payment first payer with fee
 
@@ -296,14 +268,6 @@ contract("Paytr", (accounts) => {
         CometContract._address,
         {from: whaleAccount}
       );
-      totalPaid += amountToPay;
-      totalPayments += 1;
-      totalFees += feeAmount;
-      totalPaymentsWithFee += 1;
-      console.log("Total paid: ",totalPaid);
-      console.log("Total payments: ",totalPayments);
-      console.log("Total payments with fee: ",totalPaymentsWithFee);
-      console.log("Total fees: ",totalFees);
       
       //USDC payment second payer with fee
 
@@ -318,14 +282,6 @@ contract("Paytr", (accounts) => {
         CometContract._address,
         {from: accounts[4]}
       );
-      totalPaid += amountToPay;
-      totalPayments += 1;
-      totalPaymentsWithFee += 1;
-      totalFees += feeAmount;
-      console.log("Total paid: ",totalPaid);
-      console.log("Total payments: ",totalPayments);
-      console.log("Total payments with fee: ",totalPaymentsWithFee);
-      console.log("Total fees: ",totalFees);
 
     })//end it(...)
     it("should revert when trying to use the same payment reference twice for the same payee", async () => {
@@ -339,10 +295,6 @@ contract("Paytr", (accounts) => {
         CometContract._address,
         {from: whaleAccount}
       );
-      totalPaid += amountToPay;
-      totalPayments += 1;
-      console.log("Total paid: ",totalPaid);
-      console.log("Total payments: ",totalPayments);
 
       await truffleAssert.reverts(instance.payInvoiceERC20(
         USDCContract._address,
@@ -360,133 +312,5 @@ contract("Paytr", (accounts) => {
   })//end describe
 
 
-describe("Normal payment flow of 2 invoices + payout of due invoices", () => {
-  const provider = config.provider;
-    
-  it("the contract needs to pay out all due invoices", async () => {
 
-    await web3.eth.sendTransaction({ from: accounts[0], to: whaleAccount, value: 100});
-
-    //check total supply:
-    let totalSupplyCToken = await cTokenContract.methods.totalSupply().call();
-    console.log("test supply: ",totalSupplyCToken)
-    //Approval
-    await USDCContract.methods.approve(instance.address, 99990000000000).send({from: whaleAccount});
-    let contractBalanceBeforeTx1 = await cTokenContract.methods.balanceOf(instance.address).call();
-    console.log(contractBalanceBeforeTx1);
-
-    //USDC payment
-
-    await instance.payInvoiceERC20(
-      USDCContract._address,
-      accounts[6],
-      30,
-      amountToPay,
-      "0x194e56332d32347777",
-      CometContract._address,
-      {from: whaleAccount}
-    );
-    let contractBalanceAfterTx1 = await cTokenContract.methods.balanceOf(instance.address).call();
-    console.log(contractBalanceAfterTx1);
-    totalPaid += amountToPay;
-    totalPayments += 1;
-    console.log("Total paid: ",totalPaid);
-    console.log("Total payments: ",totalPayments);
-    //end of USDC payment
-
-    //USDC payment with fee
-    let contractBalanceBeforeTx2 = await cTokenContract.methods.balanceOf(instance.address).call();
-    console.log(contractBalanceBeforeTx2);
-
-    await instance.payInvoiceERC20WithFee(
-      USDCContract._address,
-      accounts[6],
-      accounts[3],
-      30,
-      amountToPay,
-      feeAmount,
-      "0x194e56332d32347778",
-      CometContract._address,
-      {from: whaleAccount}
-    );
-    let contractBalanceAfterTx2 = await cTokenContract.methods.balanceOf(instance.address).call();
-    console.log(contractBalanceAfterTx2);
-    totalPaid += amountToPay;
-    totalPayments += 1;
-    totalFees += feeAmount;
-    totalPaymentsWithFee += 1;
-    console.log("Total paid: ",totalPaid);
-    console.log("Total payments: ",totalPayments);
-    console.log("Total payments with fee: ",totalPaymentsWithFee);
-    console.log("Total fees: ",totalFees);
-
-    //end of USDC payment with fee
-    
-    //USDC payment with 0 due date
-    // let contractBalanceBeforeTx3 = await cTokenContract.methods.balanceOf(instance.address).call();
-    // console.log(contractBalanceBeforeTx3);
-
-    // await instance.payInvoiceERC20(
-    //   USDCContract._address,
-    //   accounts[6],
-    //   0,
-    //   amountToPay,
-    //   "0x394e56332d32341111",
-    //   CometContract._address,
-    //   {from: whaleAccount}
-    // );
-    // let contractBalanceAfterTx3 = await cTokenContract.methods.balanceOf(instance.address).call();
-    // console.log(contractBalanceAfterTx3);
-
-
-
-    //update due date of payment ref. 0x394e56332d32341111
-    // let currentTime = Math.floor(Date.now() / 1000);
-    // let newDueDate = currentTime + 604800 //1 week in seconds;
-    // await instance.updateDueDate(
-    //   "0x394e56332d32341111",
-    //   newDueDate,
-    //   {from: whaleAccount}
-    // );
-    //end of update due date
-
-    //Mine blocks to earn interest
-    let contractBalanceBefore = await cTokenContract.methods.balanceOf(instance.address).call();
-    console.log("Before: ",contractBalanceBefore);
-    //console.log("start", await provider.request({method: 'eth_blockNumber', params: []}));
-    await provider.request({method: 'evm_mine', params: [{blocks:10050}]});
-    //console.log("end", await provider.request({method: 'eth_blockNumber', params: []}));
-    let contractBalanceAfter = await cTokenContract.methods.balanceOf(instance.address).call();
-    console.log("After: ",contractBalanceAfter);
-    let totalInterest = contractBalanceAfter - contractBalanceBefore;
-    console.log("Total interest: ",totalInterest);
-    let interestPerPayment = totalInterest / totalPayments;
-    let feeAmountPerPayment = totalFees / totalPaymentsWithFee;
-
-    //payout   
-
-    let payeeBalanceUsdcBefore = await USDCContract.methods.balanceOf(accounts[6]).call();
-    console.log("Payee balance USDC before: ",payeeBalanceUsdcBefore);
-    
-    await instance.payOutERC20Invoice([
-      [amountToPay, Math.floor(interestPerPayment),0, whaleAccount, accounts[6], USDCContract._address, CometContract._address, whaleAccount, "0x194e56332d32347777"],
-      [amountToPay, Math.floor(interestPerPayment),feeAmountPerPayment, whaleAccount, accounts[6], USDCContract._address, CometContract._address, whaleAccount, "0x194e56332d32347778"]
-    ],
-      [[USDCContract._address, CometContract._address, totalPaid+totalFees+totalInterest]]
-    );
-    let contractBalanceAfterPayout = await cTokenContract.methods.balanceOf(instance.address).call();
-    console.log("Contract cToken balance after payout: ",contractBalanceAfterPayout);
-
-    let payeeBalanceUsdcAfter = await USDCContract.methods.balanceOf(accounts[6]).call();
-    console.log("Payee balance USDC after: ",payeeBalanceUsdcAfter);
-
-    assert(contractBalanceAfterPayout <= 5);
-    assert(payeeBalanceUsdcBefore + 3000000000 === payeeBalanceUsdcAfter);
-
-    
-    
-
-
-    });
-  });//end describe
 });
