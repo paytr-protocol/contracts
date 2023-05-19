@@ -13,7 +13,8 @@ const WETHContract = new web3.eth.Contract(Erc20Abi, "0xC02aaA39b223FE8D0A0e5C4F
 const whaleAccount = "0x7713974908Be4BEd47172370115e8b1219F4A5f0";
 
 let amountToPay = 1500000000;
-let feeAmount = 100000;
+let feeAmount = 200000;
+let protocolFee = 100000;
 
 contract("Paytr", (accounts) => {  
 
@@ -49,12 +50,12 @@ contract("Paytr", (accounts) => {
 
     it("should be able to make an ERC20 payment using USDC", async () => {
 
-      let payerBalanceBefore = await USDCContract.methods.balanceOf(whaleAccount).call();
       let instanceCtokenBalanceBefore = await cTokenContract.methods.balanceOf(instance.address).call();
+      let whaleAccountBalanceBeforeTx = await USDCContract.methods.balanceOf(whaleAccount).call();
 
       await USDCContract.methods.approve(instance.address, 1000000000000).send({from: whaleAccount});
 
-      await instance.payInvoiceERC20(
+      let payment = await instance.payInvoiceERC20(
         USDCContract._address,
         accounts[6],
         30,
@@ -64,21 +65,25 @@ contract("Paytr", (accounts) => {
         {from: whaleAccount}
       );
       
-      let payerBalanceAfter = await USDCContract.methods.balanceOf(whaleAccount).call();
+      let whaleAccountBalanceAfterTx = await USDCContract.methods.balanceOf(whaleAccount).call();
+      let expectedWhaleAccountBalanceAfterTx = web3.utils.toBN(whaleAccountBalanceBeforeTx).sub(web3.utils.toBN(amountToPay)).sub(web3.utils.toBN(protocolFee)).toString();
+
       let instanceCtokenBalanceAfter = await cTokenContract.methods.balanceOf(instance.address).call();
 
-      assert(payerBalanceBefore > payerBalanceAfter, "USDC balance before the tx == balance after the tx ");
+      assert.equal(whaleAccountBalanceAfterTx,expectedWhaleAccountBalanceAfterTx,"Whale account balance doens't match expected balance");
       assert(instanceCtokenBalanceAfter > instanceCtokenBalanceBefore, "cToken balance hasn't changed");
+      truffleAssert.eventEmitted(payment,"PaymentERC20Event");
+      truffleAssert.eventNotEmitted(payment,"PaymentERC20EventWithFee");
     });
 
     it("should be able to make an ERC20 payment using USDC and include a fee", async () => {
 
-      let payerBalanceBefore = await USDCContract.methods.balanceOf(whaleAccount).call();
       let instanceCtokenBalanceBefore = await cTokenContract.methods.balanceOf(instance.address).call();
+      let whaleAccountBalanceBeforeTx = await USDCContract.methods.balanceOf(whaleAccount).call();
 
       await USDCContract.methods.approve(instance.address, 1000000000000).send({from: whaleAccount});
 
-      await instance.payInvoiceERC20WithFee(
+      let paymentWithFee = await instance.payInvoiceERC20WithFee(
         USDCContract._address,
         accounts[6],
         accounts[3],
@@ -90,19 +95,22 @@ contract("Paytr", (accounts) => {
         {from: whaleAccount}
       );
       
-      let payerBalanceAfter = await USDCContract.methods.balanceOf(whaleAccount).call();
+      let whaleAccountBalanceAfterTx = await USDCContract.methods.balanceOf(whaleAccount).call();
+      let expectedWhaleAccountBalanceAfterTx = web3.utils.toBN(whaleAccountBalanceBeforeTx).sub(web3.utils.toBN(amountToPay)).sub(web3.utils.toBN(feeAmount)).sub(web3.utils.toBN(protocolFee)).toString();
       let instanceCtokenBalanceAfter = await cTokenContract.methods.balanceOf(instance.address).call();
 
-      assert(payerBalanceBefore > payerBalanceAfter, "USDC balance hasn't changed");
+      assert.equal(whaleAccountBalanceAfterTx,expectedWhaleAccountBalanceAfterTx,"Whale account balance doens't match expected balance");
       assert(instanceCtokenBalanceAfter > instanceCtokenBalanceBefore, "cToken balance hasn't changed");
+      truffleAssert.eventEmitted(paymentWithFee,"PaymentERC20EventWithFee");
+      truffleAssert.eventNotEmitted(paymentWithFee,"PaymentERC20Event");
     });
 
     it("should be able to make an ERC20 payment using USDC while using value 0 as due date", async () => {
 
-      let myTokenBalanceBefore = await USDCContract.methods.balanceOf(whaleAccount).call();
       let instanceCtokenBalanceBefore = await cTokenContract.methods.balanceOf(instance.address).call();
+      let whaleAccountBalanceBeforeTx = await USDCContract.methods.balanceOf(whaleAccount).call();
 
-      await instance.payInvoiceERC20(
+      let paymentZeroDueDate = await instance.payInvoiceERC20(
         USDCContract._address,
         accounts[6],
         0,
@@ -112,11 +120,13 @@ contract("Paytr", (accounts) => {
         {from: whaleAccount}
       );
       
-      let myTokenBalanceAfter = await USDCContract.methods.balanceOf(whaleAccount).call();
-      let instanceCtokenBalanceAfter = await cTokenContract.methods.balanceOf(instance.address).call();
+      let whaleAccountBalanceAfterTx = await USDCContract.methods.balanceOf(whaleAccount).call();
+      let expectedWhaleAccountBalanceAfterTx = web3.utils.toBN(whaleAccountBalanceBeforeTx).sub(web3.utils.toBN(amountToPay)).sub(web3.utils.toBN(protocolFee)).toString();      let instanceCtokenBalanceAfter = await cTokenContract.methods.balanceOf(instance.address).call();
 
-      assert.notEqual(myTokenBalanceBefore,myTokenBalanceAfter, "USDC balance is equal!");
+      assert.equal(whaleAccountBalanceAfterTx,expectedWhaleAccountBalanceAfterTx,"Whale account balance doens't match expected balance");
       assert.notEqual(instanceCtokenBalanceBefore,instanceCtokenBalanceAfter, "cToken balance is equal!");
+      truffleAssert.eventEmitted(paymentZeroDueDate,"PaymentERC20Event");
+      truffleAssert.eventNotEmitted(paymentZeroDueDate,"PaymentERC20EventWithFee");
     });
 
     it("should revert when someone tries to use the '0 address' as payee address", async () => {
@@ -173,11 +183,12 @@ contract("Paytr", (accounts) => {
     it("should allow the payer to update the due date of a payment reference", async () => {
       let currentTime = Math.floor(Date.now() / 1000);
       let newDueDate = currentTime + 604800 //1 week in seconds;
-      await instance.updateDueDate(
+      let txUpdateDueDate = await instance.updateDueDate(
         "0x494e56332d32343035",
         newDueDate,
         {from: whaleAccount}
       );
+      truffleAssert.eventEmitted(txUpdateDueDate,"DueDateUpdatedEvent");
     });
 
     it("should revert if the payer wants to update the due date of a payment reference when the due date is smaller than current time + 1 day", async () => {
@@ -223,17 +234,19 @@ contract("Paytr", (accounts) => {
   describe("Test same payment reference", () => {
     it("should be able to use the same payment reference twice, for different payees", async () => {
       //send funds to accounts[4]
-      let accounts4BalanceBefore = await USDCContract.methods.balanceOf(accounts[4]).call();
-      await USDCContract.methods.transfer(accounts[4], 500000000000).send({from: whaleAccount});
-      let accounts4BalanceAfter = await USDCContract.methods.balanceOf(accounts[4]).call();
-      assert(accounts4BalanceBefore < accounts4BalanceAfter);
-      //Approval
+      let accounts4BalanceBeforeTransfer = await USDCContract.methods.balanceOf(accounts[4]).call();
+      await USDCContract.methods.transfer(accounts[4], 500000000000).send({from: whaleAccount});//send USDC from whaleAccount to accounts[4]
+      let accounts4BalanceAfterTransfer = await USDCContract.methods.balanceOf(accounts[4]).call();
+      assert(accounts4BalanceBeforeTransfer < accounts4BalanceAfterTransfer);
+      //Approve USDC for both accounts
       await USDCContract.methods.approve(instance.address, 1000000000000).send({from: whaleAccount});
       await USDCContract.methods.approve(instance.address, 1000000000000).send({from: accounts[4]});
 
       //USDC payment first payer
 
-      await instance.payInvoiceERC20(
+      let whaleAccountBalanceBeforeTx = await USDCContract.methods.balanceOf(whaleAccount).call();
+
+      let payment1 = await instance.payInvoiceERC20(
         USDCContract._address,
         accounts[6],
         30,
@@ -243,9 +256,18 @@ contract("Paytr", (accounts) => {
         {from: whaleAccount}
       );
 
+      let whaleAccountBalanceAfterTx = await USDCContract.methods.balanceOf(whaleAccount).call();
+      let expectedWhaleAccountBalanceAfterTx = web3.utils.toBN(whaleAccountBalanceBeforeTx).sub(web3.utils.toBN(amountToPay)).sub(web3.utils.toBN(protocolFee)).toString();
+
+      assert.equal(whaleAccountBalanceAfterTx,expectedWhaleAccountBalanceAfterTx,"Whale account balance doens't match expected balance");
+      truffleAssert.eventEmitted(payment1,"PaymentERC20Event");
+      truffleAssert.eventNotEmitted(payment1,"PaymentERC20EventWithFee");
+
       //USDC payment second payer
 
-      await instance.payInvoiceERC20(
+      let accounts4BalanceBeforeTx = await USDCContract.methods.balanceOf(accounts[4]).call();
+
+      let payment2 = await instance.payInvoiceERC20(
         USDCContract._address,
         accounts[7],
         30,
@@ -255,9 +277,18 @@ contract("Paytr", (accounts) => {
         {from: accounts[4]}
       );
 
+      let accounts4BalanceAfterTx = await USDCContract.methods.balanceOf(accounts[4]).call();
+      let expectedAccounts4BalanceAfterTx = web3.utils.toBN(accounts4BalanceBeforeTx).sub(web3.utils.toBN(amountToPay)).sub(web3.utils.toBN(protocolFee)).toString();
+
+      assert.equal(accounts4BalanceAfterTx,expectedAccounts4BalanceAfterTx,"Accounts[4] account balance doens't match expected balance");
+      truffleAssert.eventEmitted(payment2,"PaymentERC20Event");
+      truffleAssert.eventNotEmitted(payment2,"PaymentERC20EventWithFee");
+
       //USDC payment first payer with fee
 
-      await instance.payInvoiceERC20WithFee(
+      let whaleAccountBalanceBeforeTxWithFee = await USDCContract.methods.balanceOf(whaleAccount).call();
+
+      let payment1WithFee = await instance.payInvoiceERC20WithFee(
         USDCContract._address,
         accounts[6],
         accounts[9],
@@ -268,10 +299,19 @@ contract("Paytr", (accounts) => {
         CometContract._address,
         {from: whaleAccount}
       );
+
+      let whaleAccountBalanceAfterTxWithFee = await USDCContract.methods.balanceOf(whaleAccount).call();
+      let expectedWhaleAccountBalanceAfterTxWithFee = web3.utils.toBN(whaleAccountBalanceBeforeTxWithFee).sub(web3.utils.toBN(amountToPay)).sub(web3.utils.toBN(feeAmount)).sub(web3.utils.toBN(protocolFee)).toString();
+
+      assert.equal(whaleAccountBalanceAfterTxWithFee,expectedWhaleAccountBalanceAfterTxWithFee,"Whale account balance doens't match expected balance");
+      truffleAssert.eventEmitted(payment1WithFee,"PaymentERC20EventWithFee");
+      truffleAssert.eventNotEmitted(payment1WithFee,"PaymentERC20Event");
       
       //USDC payment second payer with fee
 
-      await instance.payInvoiceERC20WithFee(
+      let accounts4BalanceBeforeTxWithFee = await USDCContract.methods.balanceOf(accounts[4]).call();
+
+      let payment2WithFee = await instance.payInvoiceERC20WithFee(
         USDCContract._address,
         accounts[2],
         accounts[9],
@@ -282,6 +322,12 @@ contract("Paytr", (accounts) => {
         CometContract._address,
         {from: accounts[4]}
       );
+      let accounts4BalanceAfterTxWithFee = await USDCContract.methods.balanceOf(accounts[4]).call();
+      let expectedAccounts4BalanceAfterTxWithFee = web3.utils.toBN(accounts4BalanceBeforeTxWithFee).sub(web3.utils.toBN(amountToPay)).sub(web3.utils.toBN(feeAmount)).sub(web3.utils.toBN(protocolFee)).toString();
+
+      assert.equal(accounts4BalanceAfterTxWithFee,expectedAccounts4BalanceAfterTxWithFee,"Accounts[4] account balance doens't match expected balance");
+      truffleAssert.eventEmitted(payment2WithFee,"PaymentERC20EventWithFee");
+      truffleAssert.eventNotEmitted(payment2WithFee,"PaymentERC20Event");
 
     })//end it(...)
     it("should revert when trying to use the same payment reference twice for the same payee", async () => {
@@ -306,11 +352,7 @@ contract("Paytr", (accounts) => {
         {from: whaleAccount}
       ));
 
-
-
     })//end it(...)
   })//end describe
-
-
 
 });
