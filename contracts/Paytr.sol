@@ -6,12 +6,15 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/Utils/SafeERC20.sol";
 //import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
 interface IComet {
     function supply(address asset, uint amount) external;
     function withdraw(address asset, uint amount) external;
     function baseToken() external view returns (address);
+    function balanceOf(address account) external view returns(uint256);
+    function allow(address manager, bool isAllowed) external;
 }
 
 interface ICometRewards {
@@ -29,6 +32,11 @@ interface IERC20FeeProxy {
     ) external;
 }
 
+interface IWrapper {
+    function deposit(uint256 assets, address receiver) external returns (uint256 shares);
+    function redeem(uint256 assets, address receiver, address owner) external returns (uint256 shares);
+}
+
 /**
  * @title   Paytr
  * @notice  Paytr allows you to receive yield by making early payments.
@@ -40,11 +48,14 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
 
     address public ERC20FeeProxyAddress;
     address public gelatoAddress;
+    address public wrapperAddress;
+    address private constant WETH = 0x42a71137C09AE83D8d05974960fd607d40033499;
 
     constructor(address _gelatoAddress, address _cometAddress, uint8 _decimals, address _ERC20FeeProxyAddress) {
         gelatoAddress = _gelatoAddress; //Polygon + Mumbai msg.sender Gelato address = 0x83C766237dD04EB47F62784218839F892A691E84
         allowedCometInfo[_cometAddress] = CometInfo(true, _decimals); //Comet Mumbai cUSDCv3 address = 0xF09F0369aB0a875254fB565E52226c88f10Bc839, USDC uses 6 decimals
         ERC20FeeProxyAddress = _ERC20FeeProxyAddress; //Mumbai ERC20FeeProxyAddress (Request Network) = 0x131eb294E3803F23dc2882AB795631A12D1d8929
+        wrapperAddress = 0xFd55fCd10d7De6C6205dBBa45C4aA67d547AD8F2;
     }
 
     event PaymentERC20Event(uint256 amount, uint256 dueDate, address payee, address tokenAddress, bytes paymentReference);
@@ -161,16 +172,16 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             require(_payee != address(0), "Payee is 0 address");
 
             uint256 dueDate;
-            uint256 baseFee;
 
             _dueDate != 0 ? dueDate = block.timestamp + _dueDate * 1 days : dueDate = _dueDate;
-            allowedCometInfo[_cometAddress].decimals == 6 ? baseFee = 10**5 : baseFee = 10**17;
 
             IERC20(_asset).safeTransferFrom(msg.sender, address(this), _amount);                
             IERC20(_asset).safeApprove(_cometAddress, _amount);
-            IERC20(_asset).safeTransferFrom(msg.sender, owner(), baseFee);
 
+            uint256 cUsdcbalanceBeforeSupply = IComet(_cometAddress).balanceOf(address(this));
             IComet(_cometAddress).supply(_asset, _amount);
+            uint256 cUsdcbalanceAfterSupply = IComet(_cometAddress).balanceOf(address(this));
+            uint256 cUsdcAmountToWrap = cUsdcbalanceAfterSupply - cUsdcbalanceBeforeSupply;
 
             paymentMapping[_paymentReference] = PaymentERC20(
                 _amount,
@@ -182,9 +193,16 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
                 _cometAddress,
                 msg.sender        
             );
+            IComet(_cometAddress).allow(wrapperAddress, true);
+            IWrapper(wrapperAddress).deposit(cUsdcAmountToWrap, address(this));
             
             emit PaymentERC20Event(_amount, dueDate, _payee, _asset, _paymentReference);            
-        }
+    }
+
+    function redeemFromWrapper(uint256 _amount) external {
+        IWrapper(wrapperAddress).redeem(_amount, address(this), address(this));
+    }
+
     /**
     * @notice Make a payment using an ERC20 token.
     * @notice This function can't be used while it's paused.
@@ -222,14 +240,11 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             require(_feeAmount != 0, "0 Fee amount");
 
             uint256 dueDate;
-            uint256 baseFee;
 
             _dueDate != 0 ? dueDate = block.timestamp + _dueDate * 1 days : dueDate = _dueDate;
-            allowedCometInfo[_cometAddress].decimals == 6 ? baseFee = 10**5 : baseFee = 10**17;
 
             IERC20(_asset).safeTransferFrom(msg.sender, address(this), _amount + _feeAmount);          
             IERC20(_asset).safeApprove(_cometAddress, _amount + _feeAmount);
-            IERC20(_asset).safeTransferFrom(msg.sender, owner(), baseFee);
 
             IComet(_cometAddress).supply(_asset, _amount + _feeAmount);
 
