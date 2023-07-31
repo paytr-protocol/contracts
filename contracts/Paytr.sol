@@ -49,7 +49,6 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
     address public ERC20FeeProxyAddress;
     address public gelatoAddress;
     address public wrapperAddress;
-    address private constant WETH = 0x42a71137C09AE83D8d05974960fd607d40033499;
 
     constructor(address _gelatoAddress, address _cometAddress, uint8 _decimals, address _ERC20FeeProxyAddress) {
         gelatoAddress = _gelatoAddress; //Polygon + Mumbai msg.sender Gelato address = 0x83C766237dD04EB47F62784218839F892A691E84
@@ -201,6 +200,11 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
 
     function redeemFromWrapper(uint256 _amount) external {
         IWrapper(wrapperAddress).redeem(_amount, address(this), address(this));
+    }
+
+    function redeemFromCompound(address _cometAddress, uint256 _amount) external {
+        IComet(_cometAddress).withdraw(_cometAddress, _amount);
+        //0xc3d688B66703497DAA19211EEdff47f25384cdc3
     }
 
     /**

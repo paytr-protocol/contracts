@@ -15,6 +15,7 @@ const whaleAccount = "0x7713974908Be4BEd47172370115e8b1219F4A5f0";
 const provider = config.provider;
 
 let amountToPay = 1500000000;
+let cometTest = web3.utils.toBN(10**18);
 let feeAmount = 200000;
 
 contract("Paytr", (accounts) => {  
@@ -26,6 +27,10 @@ contract("Paytr", (accounts) => {
   
   // describe("Make a payment and get shares back", () => {
     it("should be able to make an ERC20 payment using USDC", async () => {
+
+      //check supply rate
+      let supplyRate = await CometContract.methods.getSupplyRate(cometTest).call();
+      console.log("Supply rate: ",supplyRate);
 
       await USDCContract.methods.approve(instance.address, 1000000000000).send({from: whaleAccount});
       let wTokenBalanceBeforeTx = await wrapperContract.methods.balanceOf(instance.address).call();
@@ -51,9 +56,11 @@ contract("Paytr", (accounts) => {
       assert(wTokenBalanceAfterTx > wTokenBalanceBeforeTx, "wToken balance hasn't changed");
       //mine blocks
       console.log("start", await provider.request({method: 'eth_blockNumber', params: []}));
-      await provider.request({method: 'evm_mine', params: [{blocks:1500}]});
+      //await provider.request({method: 'evm_mine', params: [{blocks:150000}]});
+      await provider.request({method: 'evm_increaseTime', params: [150000]});
       console.log("end", await provider.request({method: 'eth_blockNumber', params: []}));
-      console.log("Mined 1500 blocks");
+      //console.log("Mined 150000 blocks");
+      console.log("Increased time with 150000 seconds");
 
       //test redeem
       let USDCTokenBalanceBeforeRedeeming = await USDCContract.methods.balanceOf(instance.address).call();
@@ -64,12 +71,19 @@ contract("Paytr", (accounts) => {
       await instance.redeemFromWrapper(wTokenBalanceAfterTx);
 
       let cUSDCTokenBalanceAfterRedeeming = await cTokenContract.methods.balanceOf(instance.address).call();
-      console.log("Comet balance after redeeming: ",cUSDCTokenBalanceAfterRedeeming);
+      console.log("Comet balance after redeeming from Wrapper: ",cUSDCTokenBalanceAfterRedeeming);
       let USDCTokenBalanceAfterRedeeming = await USDCContract.methods.balanceOf(instance.address).call();
-      console.log("USDC balance after redeeming: ",USDCTokenBalanceAfterRedeeming);
+      console.log("USDC balance after redeeming from Wrapper: ",USDCTokenBalanceAfterRedeeming);
       let wTokenBalanceAfterRedeeming = await wrapperContract.methods.balanceOf(instance.address).call();
-      console.log("WrappedToken balance after redeeming: ",wTokenBalanceAfterRedeeming);
-      //assert(cUSDCTokenBalanceAfterWithdraw > amountToPay);
+      console.log("WrappedToken balance after redeeming from Wrapper: ",wTokenBalanceAfterRedeeming);
+      assert(cUSDCTokenBalanceAfterRedeeming > amountToPay);
+
+      //test redeem from Compound
+      await instance.redeemFromCompound("0xc3d688B66703497DAA19211EEdff47f25384cdc3", 1000000);
+      let USDCTokenBalanceAfterRedeemingFromCompound = await USDCContract.methods.balanceOf(instance.address).call();
+      console.log("USDC balance after redeeming from Compound: ",USDCTokenBalanceAfterRedeemingFromCompound);
+      let wTokenBalanceAfterRedeemingFromCompound = await wrapperContract.methods.balanceOf(instance.address).call();
+      console.log("WrappedToken balance after redeeming from Compound: ",wTokenBalanceAfterRedeemingFromCompound);
 
 
 
