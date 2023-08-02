@@ -202,9 +202,8 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         IWrapper(wrapperAddress).redeem(_amount, address(this), address(this));
     }
 
-    function redeemFromCompound(address _cometAddress, uint256 _amount) external {
+    function redeemFromCompound(address _cometAddress, uint256 _amount) public {
         IComet(_cometAddress).withdraw(_cometAddress, _amount);
-        //0xc3d688B66703497DAA19211EEdff47f25384cdc3
     }
 
     /**

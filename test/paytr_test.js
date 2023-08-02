@@ -12,11 +12,11 @@ const wrapperContract = new web3.eth.Contract(wrapperContractABI, "0xFd55fCd10d7
 const USDCContract = new web3.eth.Contract(Erc20Abi, "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
 const cTokenContract = new web3.eth.Contract(Erc20Abi, "0xc3d688B66703497DAA19211EEdff47f25384cdc3");
 const whaleAccount = "0x7713974908Be4BEd47172370115e8b1219F4A5f0";
+//const whaleAccount = "0x67734390B4cc161fC48467df1280D0C2786FfA1F";
 const provider = config.provider;
 
 let amountToPay = 1500000000;
 let cometTest = web3.utils.toBN(10**18);
-let feeAmount = 200000;
 
 contract("Paytr", (accounts) => {  
 
@@ -79,7 +79,7 @@ contract("Paytr", (accounts) => {
       assert(cUSDCTokenBalanceAfterRedeeming > amountToPay);
 
       //test redeem from Compound
-      await instance.redeemFromCompound("0xc3d688B66703497DAA19211EEdff47f25384cdc3", 1000000);
+      await instance.redeemFromCompound("0xc3d688B66703497DAA19211EEdff47f25384cdc3", cUSDCTokenBalanceAfterRedeeming);
       let USDCTokenBalanceAfterRedeemingFromCompound = await USDCContract.methods.balanceOf(instance.address).call();
       console.log("USDC balance after redeeming from Compound: ",USDCTokenBalanceAfterRedeemingFromCompound);
       let wTokenBalanceAfterRedeemingFromCompound = await wrapperContract.methods.balanceOf(instance.address).call();
