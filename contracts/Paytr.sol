@@ -1,26 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0 <0.9.0;
-
+ 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/Utils/SafeERC20.sol";
-//import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-
+ 
+ 
 interface IComet {
     function supply(address asset, uint amount) external;
     function withdraw(address asset, uint amount) external;
     function baseToken() external view returns (address);
-    function balanceOf(address account) external view returns(uint256);
     function allow(address manager, bool isAllowed) external;
 }
-
+ 
 interface ICometRewards {
-  function claim(address comet, address src, bool shouldAccrue) external;
+  function claimTo(address comet, address src, address to, bool shouldAccrue) external;
 }
-
+ 
 interface IERC20FeeProxy {
     function transferFromWithReferenceAndFee(
         address _tokenAddress,
@@ -31,98 +28,71 @@ interface IERC20FeeProxy {
         address _feeAddress
     ) external;
 }
-
+ 
 interface IWrapper {
     function deposit(uint256 assets, address receiver) external returns (uint256 shares);
     function redeem(uint256 assets, address receiver, address owner) external returns (uint256 shares);
 }
-
+ 
 /**
- * @title   Paytr
- * @notice  Paytr allows you to receive yield by making early payments.
- * @dev     All string parameters will change to bytes.
- */
-
+* @title   Paytr
+* @notice  Paytr allows you to earn by paying early.
+*/
+ 
 contract Paytr is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
-
-    address public ERC20FeeProxyAddress;
-    address public gelatoAddress;
-    address public wrapperAddress;
-
-    constructor(address _gelatoAddress, address _cometAddress, uint8 _decimals, address _ERC20FeeProxyAddress) {
-        gelatoAddress = _gelatoAddress; //Polygon + Mumbai msg.sender Gelato address = 0x83C766237dD04EB47F62784218839F892A691E84
-        allowedCometInfo[_cometAddress] = CometInfo(true, _decimals); //Comet Mumbai cUSDCv3 address = 0xF09F0369aB0a875254fB565E52226c88f10Bc839, USDC uses 6 decimals
-        ERC20FeeProxyAddress = _ERC20FeeProxyAddress; //Mumbai ERC20FeeProxyAddress (Request Network) = 0x131eb294E3803F23dc2882AB795631A12D1d8929
-        wrapperAddress = 0xFd55fCd10d7De6C6205dBBa45C4aA67d547AD8F2;
-    }
-
-    event PaymentERC20Event(uint256 amount, uint256 dueDate, address payee, address tokenAddress, bytes paymentReference);
-    event PaymentERC20EventWithFee(uint256 amount, uint256 dueDate, address payee, address tokenAddress, address feeAddress, bytes paymentReference, uint256 feeAmount);
-    event PayOutERC20Event(address tokenAddress, address payee, uint256 amount, bytes paymentReference,  uint256 feeAmount, address feeAddress);
-    event DueDateUpdatedEvent(address payer, address payee, bytes paymentReference, uint256 dueDate);    
-    
+ 
+    address baseAsset;
+    address ERC20FeeProxyAddress;
+    address wrapperAddress;
+    address cometAddress;
+    uint8 minDueDateInDays;
+    uint8 maxPayoutArraySize;
+    uint16 feeModifier;
+    uint16 maxDueDateInDays;    
+    uint256 minAmount;
+    uint256 maxAmount;
+ 
     struct PaymentERC20 {
         uint256 amount;
         uint256 feeAmount;
         uint256 dueDate;
+        uint256 wrapperSharesReceived;
         address payer;
         address payee;
-        address asset;
-        address cometAddress;
-        address feeAddress;       
-    }
-
-    struct RedeemDataERC20 {
-        uint256 amount;
-        uint256 interestAmount;
-        uint256 feeAmount;
-        address payer;
-        address payee;
-        address asset;
-        address cometAddress;
         address feeAddress;
-        bytes paymentReference;   
+    } 
+ 
+    constructor(address _cometAddress, address _wrapperAddress, address _ERC20FeeProxyAddress, uint16 _feeModifier, uint8 _minDueDateInDays, uint16 _maxDueDateInDays, uint256 _minAmount, uint256 _maxAmount, uint8 _maxPayoutArraySize) {
+        cometAddress = _cometAddress;
+        baseAsset = IComet(cometAddress).baseToken();
+        wrapperAddress = _wrapperAddress;
+        ERC20FeeProxyAddress = _ERC20FeeProxyAddress;
+        feeModifier = _feeModifier;
+        minDueDateInDays = _minDueDateInDays;
+        maxDueDateInDays = _maxDueDateInDays;
+        minAmount = _minAmount;
+        maxAmount = _maxAmount;
+        maxPayoutArraySize = _maxPayoutArraySize;
     }
-
-    struct totalPerAssetToRedeem {        
-        address asset;
-        address cometAddress;
-        uint256 amount;        
-    }
-
-    struct CometInfo {
-        bool allowed;
-        uint8 decimals;
-    }
-
+ 
+    event PaymentERC20Event(address tokenAddress, address payee, address feeAddress, uint256 amount, uint256 dueDate, uint256 feeAmount, bytes paymentReference);
+    event PayOutERC20Event(address tokenAddress, address payee, address feeAddress, uint256 amount, bytes paymentReference,uint256 feeAmount);
+    event InterestPayoutEvent(address tokenAddress, address payee, uint256 interestAmount, bytes paymentReference);
+    event DueDateUpdatedEvent(address payer, address payee, bytes paymentReference, uint256 dueDate);
+    event ContractParametersUpdatedEvent(uint16 feeModifier, uint8 minDueDateInDays, uint16 maxDueDateInDays, uint256 minAmount, uint256 maxAmount, uint8 maxPayoutArraySize); 
+ 
     /**
-     * @notice paymentMapping keeps track of the paid invoices. The mapping uses keyType string (the payment reference of the invoice) 
-        and valueType struct InvoiceERC20.
-     */   
+     * @notice paymentMapping keeps track of the paid invoices.
+   */ 
     mapping(bytes => PaymentERC20) public paymentMapping;
-
-    /**
-     * @notice allowedCometAddresses keeps track of the allowed Comet addresses for Compound Finance + the number of decimals, to make sure no malicious Comet contracts can be used
-        while making a payment.
-    */
-    mapping(address => CometInfo) public allowedCometInfo;
-
+ 
     /**
      * @notice allowedRequestNetworkFeeAddresses makes sure ERC20 payments originating from the Request Network protocol go through the correct ERC20FeeProxy contract.
         This makes sure Request Network can detect the payment.
-        See function payOutERC20Invoice in this contract for more details.
     */
     mapping(address => bool) public allowedRequestNetworkFeeAddresses;
-
-    /**
-    * @notice modifier checks if payment is present in contract.
-    */
-    modifier IsInContract(bytes memory _paymentReference) {       
-        require(paymentMapping[_paymentReference].amount != 0, "No prepayment found");
-        _;
-    }
-
+ 
     /**
      * @notice modifier only allows payer to use this function.
      */
@@ -130,266 +100,204 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         require(msg.sender == paymentMapping[_paymentReference].payer, "Not Authorized");
         _;
     }
-
-    /**
-     * @notice modifier only allows the Gelato smart contract or the contract owner to use this function. Gelato offers a dedicated msg.sender per account.
-     This ensures the integrity of the off-chain computation callData.
-     */
-    modifier onlyGelatoOrOwner {
-        require(msg.sender == gelatoAddress || msg.sender == owner(), "Only Gelato or owner");
+ 
+     /**
+    * @notice modifier checks if payment is present in contract.
+    */
+    modifier IsInContract(bytes memory _paymentReference) {      
+        require(paymentMapping[_paymentReference].amount != 0, "No prepayment found");
         _;
     }
-
+ 
     /**
     * @notice Make a payment using an ERC20 token.
     * @notice This function can't be used while it's paused.
-    * @param _asset Make sure the ERC20 token (base currency, USDC for example) is supported by Compound Finance V3. Using unsupported assets will result in an error.
     * @param _payee The receiver of the payment.
-    * @param _dueDate The due date of the payment, or invoice, in days.
-    * @param _amount The _asset amount in wei (10 USDC = 10**6 for example). Double check the number of decimals for each ERC20 token before paying the invoice.
-    * @param _paymentReference Reference of the related payment.  
-    * @param _cometAddress The address of the Comet contract you want to call. Check https://docs.compound.finance/#networks to get the correct contract address.
-    * @dev Uses modifier IsNotPaid, nonReentrant and whenNotPaused.
-    * @dev The parameter _dueDate needs to be inserted in number of days (uint8).
-    * @dev The parameter _amount needs be inserted in wei. Double check the decimal input for each token.
-    */
-
-    function payInvoiceERC20(
-        address _asset, //address base token, like USDC
-        address _payee,
-        uint8 _dueDate,
-        uint256 _amount,
-        bytes calldata _paymentReference,
-        address _cometAddress
-        ) public nonReentrant whenNotPaused {
-
-            require(_amount != 0, "0 Amount");
-            require(paymentMapping[_paymentReference].payer != msg.sender,"Payment reference already used");
-            require(paymentMapping[_paymentReference].payee != _payee,"Payment reference already used");
-            require(allowedCometInfo[_cometAddress].allowed == true, "Invalid Comet address"); //prevents the use of malicious Comet contracts
-            require(IComet(_cometAddress).baseToken() == _asset, "Invalid asset"); //requires the use of the correct base asset for the Comet address
-            require(_payee != address(0), "Payee is 0 address");
-
-            uint256 dueDate;
-
-            _dueDate != 0 ? dueDate = block.timestamp + _dueDate * 1 days : dueDate = _dueDate;
-
-            IERC20(_asset).safeTransferFrom(msg.sender, address(this), _amount);                
-            IERC20(_asset).safeApprove(_cometAddress, _amount);
-
-            uint256 cUsdcbalanceBeforeSupply = IComet(_cometAddress).balanceOf(address(this));
-            IComet(_cometAddress).supply(_asset, _amount);
-            uint256 cUsdcbalanceAfterSupply = IComet(_cometAddress).balanceOf(address(this));
-            uint256 cUsdcAmountToWrap = cUsdcbalanceAfterSupply - cUsdcbalanceBeforeSupply;
-
-            paymentMapping[_paymentReference] = PaymentERC20(
-                _amount,
-                0,
-                dueDate,
-                msg.sender,
-                _payee,  
-                _asset,
-                _cometAddress,
-                msg.sender        
-            );
-            IComet(_cometAddress).allow(wrapperAddress, true);
-            IWrapper(wrapperAddress).deposit(cUsdcAmountToWrap, address(this));
-            
-            emit PaymentERC20Event(_amount, dueDate, _payee, _asset, _paymentReference);            
-    }
-
-    function redeemFromWrapper(uint256 _amount) external {
-        IWrapper(wrapperAddress).redeem(_amount, address(this), address(this));
-    }
-
-    function redeemFromCompound(address _cometAddress, uint256 _amount) public {
-        IComet(_cometAddress).withdraw(_cometAddress, _amount);
-    }
-
-    /**
-    * @notice Make a payment using an ERC20 token.
-    * @notice This function can't be used while it's paused.
-    * @param _asset Make sure the ERC20 token (base currency, USDC for example) is supported by Compound Finance V3. Using unsupported assets will result in an error.
-    * @param _payee The receiver of the payment.
-    * @param _feeAddress When using an additional fee, this is the address that will receive the feeAmount. Requires msg.sender address when param _feeAmount == 0.
-    * @param _dueDate The due date of the payment, or invoice, in days
-    * @param _amount The _asset amount in wei (10 USDC = 10**6 for example). Double check the number of decimals for each ERC20 token before paying the invoice.
+    * @param _feeAddress When using an additional fee, this is the address that will receive the _feeAmount.
+    * @param _dueInDays The due date of the payment, or invoice, in days.
+    * @param _amount The _asset amount in wei.
     * @param _feeAmount The total _asset fee amount in wei.
-    * @param _paymentReference Reference of the related payment.  
-    * @param _cometAddress The address of the Comet contract you want to call. Check https://docs.compound.finance/#networks to get the correct contract address.
-    * @dev Uses modifier IsNotPaid, nonReentrant and whenNotPaused.
+    * @param _paymentReference Reference of the related payment.
+    * @dev Uses modifiers nonReentrant and whenNotPaused.
     * @dev The parameter _dueDate needs to be inserted in number of days (uint8).
-    * @dev The parameters _amount and _feeAmount need be inserted in wei. Double check the decimal input for each token.
     */
-
-    function payInvoiceERC20WithFee(
-        address _asset, //address base token, like USDC
+ 
+    function payInvoiceERC20(
         address _payee,
         address _feeAddress,
-        uint8 _dueDate,
+        uint8 _dueInDays,
         uint256 _amount,
         uint256 _feeAmount,
-        bytes calldata _paymentReference,
-        address _cometAddress
+        bytes calldata _paymentReference
         ) public nonReentrant whenNotPaused {
-
+            
             require(_amount != 0, "0 Amount");
+            require(_amount >= minAmount, "Amount too low");
             require(paymentMapping[_paymentReference].payer != msg.sender,"Payment reference already used");
             require(paymentMapping[_paymentReference].payee != _payee,"Payment reference already used");
-            require(allowedCometInfo[_cometAddress].allowed == true, "Invalid Comet address"); //prevents the use of malicious Comet contracts
-            require(IComet(_cometAddress).baseToken() == _asset, "Invalid asset"); //requires the use of the correct base asset for the Comet address
             require(_payee != address(0), "Payee is 0 address");
             require(_feeAddress != address(0), "Fee address is 0 address");
-            require(_feeAmount != 0, "0 Fee amount");
+            if(_dueInDays != 0) {
+                require(_dueInDays <= maxDueDateInDays && _dueInDays >= minDueDateInDays,"Due date not allowed on payment");
+            }
 
             uint256 dueDate;
-
-            _dueDate != 0 ? dueDate = block.timestamp + _dueDate * 1 days : dueDate = _dueDate;
-
-            IERC20(_asset).safeTransferFrom(msg.sender, address(this), _amount + _feeAmount);          
-            IERC20(_asset).safeApprove(_cometAddress, _amount + _feeAmount);
-
-            IComet(_cometAddress).supply(_asset, _amount + _feeAmount);
-
+ 
+            _dueInDays != 0 ? dueDate = block.timestamp + _dueInDays * 1 days : dueDate = _dueInDays;
+ 
+            IERC20(baseAsset).safeTransferFrom(msg.sender, address(this), _amount + _feeAmount);
+            IERC20(baseAsset).safeApprove(cometAddress, _amount + _feeAmount);
+            IComet(cometAddress).allow(wrapperAddress, true);
+ 
+            uint256 cUsdcbalanceBeforeSupply = IERC20(cometAddress).balanceOf(address(this));
+            IComet(cometAddress).supply(baseAsset, _amount + _feeAmount);
+            uint256 cUsdcbalanceAfterSupply = IERC20(cometAddress).balanceOf(address(this));
+            uint256 cUsdcAmountToWrap = cUsdcbalanceAfterSupply - cUsdcbalanceBeforeSupply;
+          
+            uint256 wrappedBalanceBeforeSupply = IERC20(wrapperAddress).balanceOf(address(this));          
+            IWrapper(wrapperAddress).deposit(cUsdcAmountToWrap, address(this));
+            uint256 wrappedBalanceAfterSupply = IERC20(wrapperAddress).balanceOf(address(this));
+            uint256 wrappedShares = wrappedBalanceAfterSupply - wrappedBalanceBeforeSupply;
+     
             paymentMapping[_paymentReference] = PaymentERC20(
                 _amount,
                 _feeAmount,
                 dueDate,
+                wrappedShares,
                 msg.sender,
-                _payee,  
-                _asset,
-                _cometAddress,
-                _feeAddress        
+                _payee,
+                _feeAddress      
             );
-            
-            emit PaymentERC20EventWithFee(_amount, dueDate, _payee, _asset, _feeAddress, _paymentReference, _feeAmount);            
-        }
-
+ 
+            emit PaymentERC20Event(baseAsset, _payee, _feeAddress, _amount, dueDate, _feeAmount, _paymentReference);          
+    }
+ 
     /**
-    @notice This function allows the payer to update the due date of the payment. This is only possible when the initial payment had a '0' dueDate,
-    for example when using the Paytr contract for escrow or crowdfunding. Updating the due date means releasing the funds.
-    @param _paymentReference Input the paymentReference in bytes.
-    @param _dueDateUpdated Input the due date in Epoch time.    
-     */    
+    * @notice This function allows the payer to update the due date of the payment. This is only possible when the initial payment had a '0' dueDate,
+   for example when using the Paytr contract for escrow or crowdfunding. Updating the due date means releasing the funds in the future.
+    * @param _paymentReference Input the paymentReference in bytes.
+    * @param _dueDateUpdated Input the due date in epoch time format.
+    * @dev Uses modifiers OnlyPayer and nonReentrant;
+    */  
     
-    function updateDueDate(bytes calldata _paymentReference, uint256 _dueDateUpdated) public IsInContract(_paymentReference) OnlyPayer(_paymentReference) nonReentrant whenNotPaused {
-        require(paymentMapping[_paymentReference].dueDate == 0, "Your payment reference already has a due date assigned");
-        require(_dueDateUpdated >= block.timestamp + 1 days, "New due date needs to be > block.timestamp + 1 day");
+    function updateDueDate(bytes calldata _paymentReference, uint256 _dueDateUpdated) public IsInContract(_paymentReference) OnlyPayer(_paymentReference) nonReentrant{
+        require(paymentMapping[_paymentReference].dueDate == 0, "New due date != 0");
+        require(_dueDateUpdated > block.timestamp + 1200 && _dueDateUpdated <= block.timestamp + (maxDueDateInDays * 86400), "Invalid new due date");
         paymentMapping[_paymentReference].dueDate = _dueDateUpdated;
         address _payee = paymentMapping[_paymentReference].payee;
-
+ 
         emit DueDateUpdatedEvent(msg.sender, _payee, _paymentReference, _dueDateUpdated);
     }
-
-     /**
-     *
-     @notice Private function 
-     @dev Handles the redeeming of the asset from Compound Finance
-    */
-    function redeemFundsERC20(totalPerAssetToRedeem[] calldata assetsToRedeem) private {
-        uint i;
-        uint assetsToRedeemLength = assetsToRedeem.length;
-
-        for (;i < assetsToRedeemLength;) {
-            IComet(assetsToRedeem[i].cometAddress).withdraw(assetsToRedeem[i].asset, assetsToRedeem[i].amount);
-            ++i;
-        }
-    }
-
-     /**
+ 
+     /**                                                                              
     * @notice Allows the contract to pay payee (principal amount), payer (interest amount) and fee receiver (fee amount).
     This function cannot be paused.
-    * @dev Uses modifiers onlyGelatoOrOwner. 
+     * @param payoutReferencesArray Insert the bytes array of references that need to be paid out.
+    * @dev Uses modifier nonReentrant.
     **/
-    function payOutERC20Invoice(RedeemDataERC20[] calldata redeemData, totalPerAssetToRedeem[] calldata assetsToRedeem ) public onlyGelatoOrOwner nonReentrant {  
-
-        require(redeemData.length > 0 && assetsToRedeem.length > 0, "No payments to redeem");        
-        redeemFundsERC20(assetsToRedeem);
-
+    function payOutERC20Invoice(bytes[] calldata payoutReferencesArray) external nonReentrant {
+ 
         uint256 i;
-        uint256 redeemDataLength = redeemData.length;
-
-        for (; i < redeemDataLength;) {
-            bytes memory _paymentReference = redeemData[i].paymentReference;
+        uint256 payoutReferencesArrayLength = payoutReferencesArray.length;
+ 
+        require(payoutReferencesArrayLength != 0 && payoutReferencesArrayLength <= maxPayoutArraySize, "Invalid array length");
+ 
+        for (; i < payoutReferencesArrayLength;) {
+            bytes memory _paymentReference = payoutReferencesArray[i];
             require(paymentMapping[_paymentReference].amount != 0,"Unknown payment reference"); //check to see if payment reference to be paid out is present in the contract
-            address payable _payee = payable(redeemData[i].payee);
-            address payable _payer = payable(redeemData[i].payer);
-            address payable _feeAddress = payable(redeemData[i].feeAddress);
-            address _asset = redeemData[i].asset;            
-            uint256 _amount = redeemData[i].amount;
-            uint256 _feeAmount = redeemData[i].feeAmount;
-            uint256 _interestAmount = redeemData[i].interestAmount * 9000 / 10000;
-            
-            //Update state before transferring funds
-            paymentMapping[_paymentReference].amount = 0;
-            
-            /*
-            Transfer funds to payer, payee and feeAddress. Payments originating from Request Network call the ERC20FeeProxy contract.
-            The Request Network payments are detected by checking the _feeAddress parameter.
-            */
+            require(paymentMapping[_paymentReference].dueDate <= block.timestamp,"Reference not due yet");
+ 
+            address payable _payee = payable(paymentMapping[_paymentReference].payee);
+            address payable _payer = payable(paymentMapping[_paymentReference].payer);
+            address payable _feeAddress = payable(paymentMapping[_paymentReference].feeAddress);
+            uint256 _amount = paymentMapping[_paymentReference].amount;
+            uint256 _feeAmount = paymentMapping[_paymentReference].feeAmount;
+            uint256 _wrapperSharesToRedeem = paymentMapping[_paymentReference].wrapperSharesReceived;
+ 
+            paymentMapping[_paymentReference].amount = 0; //prevents double payout because of the require statement
+ 
+            //redeem Wrapper shares and receive v3 cTokens
+            IWrapper(wrapperAddress).redeem(_wrapperSharesToRedeem, address(this), address(this));
+ 
+            //redeem all available v3 cTokens from Compound for baseAsset tokens
+            uint256 cTokensToRedeem = IERC20(cometAddress).balanceOf(address(this));
+            IComet(cometAddress).withdraw(baseAsset, cTokensToRedeem);
+ 
+            //get new USDC balance
+            uint256 _totalInterestGathered = IERC20(baseAsset).balanceOf(address(this)) - _amount;
+            uint256 _interestAmount = _totalInterestGathered * (10000 - (feeModifier*100)) / 10000;
+ 
             if(allowedRequestNetworkFeeAddresses[_feeAddress] == true) {
-                IERC20(_asset).safeApprove(ERC20FeeProxyAddress, _amount + _feeAmount);
-
+                IERC20(baseAsset).safeApprove(ERC20FeeProxyAddress, _amount + _feeAmount);
+ 
                 IERC20FeeProxy(ERC20FeeProxyAddress).transferFromWithReferenceAndFee(
-                    _asset,
+                    baseAsset,
                     _payee,
                     _amount,
                     _paymentReference,
                     _feeAmount,
                     _feeAddress
                 );
-            
+              
             } else {
-                IERC20(_asset).safeTransfer(_payee, _amount);
+                IERC20(baseAsset).safeTransfer(_payee, _amount);
                 if(_feeAmount != 0) {
-                    IERC20(_asset).safeTransfer(_feeAddress, _feeAmount);
+                    IERC20(baseAsset).safeTransfer(_feeAddress, _feeAmount);
                 }
             }
-            
-            IERC20(_asset).safeTransfer(_payer, _interestAmount);
-            ++i; 
-
-            emit PayOutERC20Event(_asset, _payee, _amount, _paymentReference, _feeAmount, _feeAddress);           
-        }
-        //transfer total fee amount to contract owner
-        uint256 j;
-        for (;j < assetsToRedeem.length;) {
-            uint256 _balanceAfterRedeeming = IERC20(assetsToRedeem[j].asset).balanceOf(address(this));
-            IERC20(assetsToRedeem[j].asset).safeTransfer(owner(), _balanceAfterRedeeming);
-            ++j;
-        }      
+          
+            IERC20(baseAsset).safeTransfer(_payer, _interestAmount);
+            ++i;
+ 
+            emit PayOutERC20Event(baseAsset, _payee, _feeAddress, _amount, _paymentReference, _feeAmount);
+            emit InterestPayoutEvent(baseAsset, _payer, _interestAmount, _paymentReference);
+       }
+          
     }
-
-    function claimCompRewards(address _cometAddress) public onlyOwner {
-        ICometRewards(_cometAddress).claim(_cometAddress, address(this), true);
-        IERC20(_cometAddress).safeTransfer(owner(), IERC20(_cometAddress).balanceOf(address(this)));
+ 
+    function claimCompRewards() external onlyOwner {
+        ICometRewards(0x1B0e765F6224C21223AeA2af16c1C46E38885a40).claimTo(cometAddress, address(this), owner(), true);
     }
-
-    function addCometAddress(address _cometAddressToAdd, uint8 _decimals) public onlyOwner {
-        allowedCometInfo[_cometAddressToAdd] = CometInfo(
-            true,
-            _decimals
-        );
+ 
+    function claimBaseAssetBalance() external onlyOwner {
+        IERC20(baseAsset).safeTransfer(owner(), IERC20(baseAsset).balanceOf(address(this)));
     }
+ 
+    function setContractParameters(uint16 _feeModifier, uint8 _minDueDateInDays, uint16 _maxDueDateInDays, uint256 _minAmount, uint256 _maxAmount, uint8 _maxPayoutArraySize) external onlyOwner {
+          require(_feeModifier <= 50, "Invalid feeModifier");
+          require(_minDueDateInDays >=5, "Invalid min. due date");
+          require(_maxDueDateInDays <=365, "Invalid max. due date");
+          require(_minAmount >= 1, "Invalid min. amount");
+          require(_maxPayoutArraySize != 0, "Invalid max array size");
+          feeModifier = _feeModifier;
+          minDueDateInDays = _minDueDateInDays;
+          maxDueDateInDays = _maxDueDateInDays;
+          minAmount = _minAmount;
+          maxAmount = _maxAmount;
+          maxPayoutArraySize = _maxPayoutArraySize;
 
-    function addRequestNetworkFeeAddress(address _requestNetworkFeeAddress) public onlyOwner {
+          emit ContractParametersUpdatedEvent(feeModifier, minDueDateInDays, maxDueDateInDays, minAmount, maxAmount, maxPayoutArraySize);
+    }
+         
+ 
+    function addRequestNetworkFeeAddress(address _requestNetworkFeeAddress) external onlyOwner {
         allowedRequestNetworkFeeAddresses[_requestNetworkFeeAddress] = true;
     }
-
-    function setGelatoAddress(address _gelatoAddress) public onlyOwner {
-        gelatoAddress = _gelatoAddress;
-    }
-
-    function setERC20FeeProxy(address _ERC20FeeProxyAddress) public onlyOwner {
+ 
+    function setERC20FeeProxy(address _ERC20FeeProxyAddress) external onlyOwner {
         ERC20FeeProxyAddress = _ERC20FeeProxyAddress;
     }
-
-    function pause() public onlyOwner {
+ 
+    function disallowWrapper() external onlyOwner {
+        IComet(cometAddress).allow(wrapperAddress, false);
+    }
+ 
+    function pause() external onlyOwner {
         _pause();
     }
-
-    function unpause() public onlyOwner {
+ 
+    function unpause() external onlyOwner {
         _unpause();
     }
-
+ 
 }
