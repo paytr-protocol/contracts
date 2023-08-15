@@ -114,13 +114,6 @@ contract("Paytr", (accounts) => {
       assert(contractUSDCBalanceAfterBalanceTransfer < contractUSDCBalanceAfterPayOut, "contract USDC balance doesn't match");
       assert(contractUSDCBalanceAfterBalanceTransfer == 0, "contract USDC balance should be 0");
 
-      let ownerCompBalanceBeforeClaiming = await compTokenContract.methods.balanceOf(accounts[0]).call();
-      console.log("Owner $COMP balance before claiming $COMP rewards: ", ownerCompBalanceBeforeClaiming);
-      await instance.claimCompRewards();
-      let ownerCompBalanceAfterClaiming = await compTokenContract.methods.balanceOf(accounts[0]).call();
-      console.log("Owner $COMP balance before claiming $COMP rewards: ", ownerCompBalanceAfterClaiming);
-
-
 
   })//end describe
 

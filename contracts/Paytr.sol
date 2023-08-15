@@ -63,11 +63,10 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         address feeAddress;
     } 
  
-    constructor(address _cometAddress, address _wrapperAddress, address _ERC20FeeProxyAddress, uint16 _feeModifier, uint8 _minDueDateInDays, uint16 _maxDueDateInDays, uint256 _minAmount, uint256 _maxAmount, uint8 _maxPayoutArraySize) {
+    constructor(address _cometAddress, address _wrapperAddress, uint16 _feeModifier, uint8 _minDueDateInDays, uint16 _maxDueDateInDays, uint256 _minAmount, uint256 _maxAmount, uint8 _maxPayoutArraySize) {
         cometAddress = _cometAddress;
         baseAsset = IComet(cometAddress).baseToken();
         wrapperAddress = _wrapperAddress;
-        ERC20FeeProxyAddress = _ERC20FeeProxyAddress;
         feeModifier = _feeModifier;
         minDueDateInDays = _minDueDateInDays;
         maxDueDateInDays = _maxDueDateInDays;
