@@ -2,7 +2,7 @@ var assert = require('assert');
 const truffleAssert = require('truffle-assertions');
 const { time } = require("@openzeppelin/test-helpers");
 const Paytr = artifacts.require("Paytr");
-const { USDCContract, whaleAccount } = require('./helpers/parameters');
+const { USDCContract, whaleAccount, provider } = require('./helpers/parameters');
 
 contract("Paytr", (accounts) => {  
     const payee = accounts[6];
@@ -19,7 +19,7 @@ contract("Paytr", (accounts) => {
       it("the payer of a payment reference should be able to update the due date when the original due date is 0", async () => {
         let currentTime = await time.latest();
         let numberOfDaysToAdd = web3.utils.toBN(7);
-        let newdueDate = web3.utils.toBN(currentTime).add(web3.utils.toBN(numberOfDaysToAdd).mul(web3.utils.toBN(86400)));
+        let newdueDate = web3.utils.toBN(currentTime).add((numberOfDaysToAdd).mul(web3.utils.toBN(86400))).toString();
      
         let payment = await instance.payInvoiceERC20(
           payee,
@@ -43,7 +43,7 @@ contract("Paytr", (accounts) => {
       it("shouldn't be possible to update the due date of a payment reference, when it already has a due date != 0", async () => {
         let currentTime = await time.latest();
         let numberOfDaysToAdd = web3.utils.toBN(7);
-        let newdueDate = web3.utils.toBN(currentTime).add(web3.utils.toBN(numberOfDaysToAdd).mul(web3.utils.toBN(86400)));
+        let newdueDate = web3.utils.toBN(currentTime).add((numberOfDaysToAdd).mul(web3.utils.toBN(86400))).toString();
 
         await truffleAssert.fails(instance.updateDueDate("0x494e56332d32343034", newdueDate, {from: whaleAccount}), truffleAssert.ErrorType.REVERT);
         
@@ -52,7 +52,7 @@ contract("Paytr", (accounts) => {
       it("should revert when an account != the payee tries to update the due date of a payment", async () => {
         let currentTime = await time.latest();
         let numberOfDaysToAdd = web3.utils.toBN(7);
-        let newdueDate = web3.utils.toBN(currentTime).add(web3.utils.toBN(numberOfDaysToAdd).mul(web3.utils.toBN(86400)));
+        let newdueDate = web3.utils.toBN(currentTime).add((numberOfDaysToAdd).mul(web3.utils.toBN(86400))).toString();
 
         await truffleAssert.fails(instance.updateDueDate("0x494e56332d32343034", newdueDate, {from: accounts[3]}), truffleAssert.ErrorType.REVERT);
         
@@ -61,7 +61,7 @@ contract("Paytr", (accounts) => {
       it("should revert when trying to update a payment reference that is unknown to the contract", async () => {
         let currentTime = await time.latest();
         let numberOfDaysToAdd = web3.utils.toBN(7);
-        let newdueDate = web3.utils.toBN(currentTime).add(web3.utils.toBN(numberOfDaysToAdd).mul(web3.utils.toBN(86400)));
+        let newdueDate = web3.utils.toBN(currentTime).add((numberOfDaysToAdd).mul(web3.utils.toBN(86400))).toString();
 
         await truffleAssert.fails(instance.updateDueDate("0x494e56332d32000000", newdueDate, {from: whaleAccount}), truffleAssert.ErrorType.REVERT);
         
@@ -69,8 +69,8 @@ contract("Paytr", (accounts) => {
 
       it("should revert when trying to update a payment reference with a value > the allowed due date (because of contract parameters)", async () => {
         let currentTime = await time.latest();
-        let numberOfDaysToAdd = web3.utils.toBN(31); //parameter maxDueDateInDays is set to 30
-        let newdueDate = web3.utils.toBN(currentTime).add(web3.utils.toBN(numberOfDaysToAdd).mul(web3.utils.toBN(86400)));
+        let numberOfDaysToAdd = web3.utils.toBN(366); //parameter maxDueDateInDays is set to 365
+        let newdueDate = web3.utils.toBN(currentTime).add((numberOfDaysToAdd).mul(web3.utils.toBN(86400))).toString();
 
         await instance.payInvoiceERC20(
           payee,
@@ -88,8 +88,7 @@ contract("Paytr", (accounts) => {
 
       it("should revert when trying to update a payment reference with a value < the allowed due date", async () => {
         let currentTime = await time.latest();
-        let numberOfSecondsToAdd = web3.utils.toBN(12); //
-        let newdueDate = web3.utils.toBN(currentTime).add(web3.utils.toBN(numberOfSecondsToAdd));
+        let newdueDate = web3.utils.toBN(currentTime).toString();
 
         await instance.payInvoiceERC20(
           payee,
@@ -101,7 +100,7 @@ contract("Paytr", (accounts) => {
           {from: whaleAccount}
         );
 
-        await truffleAssert.fails(instance.updateDueDate("0x494e56332d32343099", newdueDate, {from: whaleAccount}), truffleAssert.ErrorType.REVERT);
+        await truffleAssert.fails(instance.updateDueDate("0x494e56332d32343999", newdueDate, {from: whaleAccount}), truffleAssert.ErrorType.REVERT);
 
       });
 

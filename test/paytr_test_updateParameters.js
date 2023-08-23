@@ -9,15 +9,19 @@ contract("Paytr", (accounts) => {
     beforeEach('should setup the contract instances', async () => {
       instance = await Paytr.deployed();
     });
+
+    let minDueDateParameter = 7 * 86400;
+    let maxDueDateParameter = 365 * 86400;
+    let maxAmountParameter = 100_000 * 10**6;
     
     describe("Updating parameters", () => {
       it("should be able for the contract owner to update the contract parameters with correct values", async () => {
         let setParams = await instance.setContractParameters(
-            20, //fee%
-            7, //minDueDate
-            300, //maxDueDate
+            9000, //a modifier of 9000 equals a 10% fee (9000/10000)
+            minDueDateParameter,
+            maxDueDateParameter,
             3, //minAmount
-            100000000, //maxAmount,
+            maxAmountParameter,
             5 //max payout array size
         )
         truffleAssert.eventEmitted(setParams, 'ContractParametersUpdatedEvent');
@@ -25,21 +29,21 @@ contract("Paytr", (accounts) => {
 
       it("should be able for the contract owner to set a maxAmount of $5m (5000000000000 or 5**12)", async () => {
         let setParams = await instance.setContractParameters(
-            20,
-            7,
-            300,
-            3, //minAmount 0
+            9000,
+            minDueDateParameter,
+            maxDueDateParameter,
+            3,
             5**12,
             5
         )
         truffleAssert.eventEmitted(setParams, 'ContractParametersUpdatedEvent');
       });
 
-      it("random address shouldn't be able to update the contract parameters", async () => {
+      it("A random address shouldn't be able to update the contract parameters", async () => {
         await truffleAssert.fails(instance.setContractParameters(
-            20,
-            7,
-            300,
+            9000,
+            minDueDateParameter,
+            maxDueDateParameter,
             3,
             100000000,
             5,
@@ -48,11 +52,11 @@ contract("Paytr", (accounts) => {
         truffleAssert.ErrorType.REVERT);
       });
 
-      it("should throw an error when setting the fee% higher than 50", async () => {
+      it("should throw an error when setting the fee% higher than 50 (feeModifier of < 5000", async () => {
         await truffleAssert.fails(instance.setContractParameters(
-            51, //51% fee
-            7,
-            300,
+            4999, // >50% fee
+            minDueDateParameter,
+            maxDueDateParameter,
             3,
             100000000,
             5
@@ -60,9 +64,9 @@ contract("Paytr", (accounts) => {
         truffleAssert.ErrorType.REVERT)
       });
 
-      it("should throw an error when setting the minDueData lower than 5", async () => {
+      it("should throw an error when setting the minDueDateParameter lower than 5", async () => {
         await truffleAssert.fails(instance.setContractParameters(
-            20,
+            9000,
             1,
             300,
             3,
@@ -74,7 +78,7 @@ contract("Paytr", (accounts) => {
 
       it("should throw an error when setting the maxDueData higher than 365", async () => {
         await truffleAssert.fails(instance.setContractParameters(
-            20,
+            9000,
             7,
             730, //2 years
             3,
@@ -86,7 +90,7 @@ contract("Paytr", (accounts) => {
 
       it("should throw an error when setting the minAmount lower than 1 (to 0)", async () => {
         await truffleAssert.fails(instance.setContractParameters(
-            20,
+            9000,
             7,
             300,
             0, //minAmount 0
@@ -98,7 +102,7 @@ contract("Paytr", (accounts) => {
 
       it("should throw an error when setting the maxPayoutArraySize lower than 1 (to 0)", async () => {
         await truffleAssert.fails(instance.setContractParameters(
-            20,
+            9000,
             7,
             300,
             0,
