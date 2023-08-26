@@ -20,49 +20,45 @@ contract("Paytr", (accounts) => {
     //check supply rate
     let supplyRate = await CometContract.methods.getSupplyRate(cometSupplyRateParam).call();
     assert(supplyRate > 0);
-    console.log("Supply rate: ",supplyRate);
 
     await USDCContract.methods.approve(instance.address, 1000000000000).send({from: whaleAccount});
     let wTokenBalanceBeforeTx = await wrapperContract.methods.balanceOf(instance.address).call();
-    console.log("WrappedToken balance before tx: ",wTokenBalanceBeforeTx);
-
+    let contractCUSDCTokenBalanceBeforeTx = await cTokenContract.methods.balanceOf(instance.address).call();
     let whaleAccountBalanceBeforeTx = await USDCContract.methods.balanceOf(whaleAccount).call();
+    
+    let currentTime = await time.latest();
+    let numberOfDaysToAdd = web3.utils.toBN(30);
+    let dueDate = web3.utils.toBN(currentTime).add((numberOfDaysToAdd).mul(web3.utils.toBN(86400))).toString();
 
     let payment = await instance.payInvoiceERC20(
       payee,
       whaleAccount, //dummy feeAddress
-      7,
+      dueDate,
       amountToPay,
       0, //no fee requires 0 as parameter input        
       "0x494e56332d32343034",
       {from: whaleAccount}
     );
-    truffleAssert.eventEmitted(payment, 'PaymentERC20Event');
+    truffleAssert.eventEmitted(payment, "PaymentERC20Event");
 
-    let cUSDCTokenBalanceAfterTx = await cTokenContract.methods.balanceOf(instance.address).call();
-    console.log("cToken balance after tx :",cUSDCTokenBalanceAfterTx);
+    let contractCUSDCTokenBalanceAfterTx = await cTokenContract.methods.balanceOf(instance.address).call();
     let wTokenBalanceAfterTx = await wrapperContract.methods.balanceOf(instance.address).call();
-    console.log("WrappedToken balance after tx: ",wTokenBalanceAfterTx);
     let expectedWhaleAccountBalanceAfterTx = web3.utils.toBN(whaleAccountBalanceBeforeTx).sub(web3.utils.toBN(amountToPay)).toString();
     let whaleAccountBalanceAfterTx = await USDCContract.methods.balanceOf(whaleAccount).call();
 
     assert.equal(whaleAccountBalanceAfterTx,expectedWhaleAccountBalanceAfterTx,"Whale account balance doens't match expected balance");
+    assert.equal(contractCUSDCTokenBalanceBeforeTx, contractCUSDCTokenBalanceAfterTx,"Contract cToken balance doesn't match");
     assert(wTokenBalanceAfterTx > wTokenBalanceBeforeTx, "wToken balance hasn't changed");
 
     //increase time and block number to force interest gathering. Without both, Truffle test throws an arithmetic overflow error
     let currentBlock = await web3.eth.getBlockNumber();
-    console.log("...");
-    console.log("Increasing time and blocks to gather interest...");
     await provider.request({method: 'evm_increaseTime', params: [10000000]});
     await time.advanceBlockTo(currentBlock + 999); //999 + 1 block
-    console.log("Increased time with 10000000 seconds, advanced 1000 blocks");
-    console.log("...");
 
     //test redeem
-    let USDCTokenBalanceBeforeRedeeming = await USDCContract.methods.balanceOf(instance.address).call();
-    console.log("USDC balance before redeeming: ",USDCTokenBalanceBeforeRedeeming);
-    let cUSDCTokenBalanceBeforeRedeeming = await cTokenContract.methods.balanceOf(instance.address).call();
-    console.log("cToken balance before redeeming: ",cUSDCTokenBalanceBeforeRedeeming);
+    let contractUSDCTokenBalanceBeforeRedeeming = await USDCContract.methods.balanceOf(instance.address).call();
+    let contractCUSDCTokenBalanceBeforeRedeeming = await cTokenContract.methods.balanceOf(instance.address).call();
+    let payeeUSDCBalanceBeforePayout = await USDCContract.methods.balanceOf(accounts[6]).call();
 
     //create array with payment references to redeem
     let redeemArray = [];
@@ -71,20 +67,19 @@ contract("Paytr", (accounts) => {
     //test redeem from Compound
     await instance.payOutERC20Invoice(redeemArray);
 
+    let contractCUSDCTokenBalanceAfterRedeeming = await cTokenContract.methods.balanceOf(instance.address).call();
+    let contractUSDCTokenBalanceAfterRedeeming = await USDCContract.methods.balanceOf(instance.address).call();
+    let wTokenBalanceAfterRedeeming = await wrapperContract.methods.balanceOf(instance.address).call();
 
-    let cUSDCTokenBalanceAfterRedeemingFromCompound = await cTokenContract.methods.balanceOf(instance.address).call();
-    console.log("Contract's cToken balance after redeeming from Compound: ",cUSDCTokenBalanceAfterRedeemingFromCompound);
-    let USDCTokenBalanceAfterRedeemingFromCompound = await USDCContract.methods.balanceOf(instance.address).call();
-    console.log("Contract's USDC balance after redeeming from Compound: ",USDCTokenBalanceAfterRedeemingFromCompound);
-    let wTokenBalanceAfterRedeemingFromCompound = await wrapperContract.methods.balanceOf(instance.address).call();
-    console.log("Contract's WrappedToken balance after redeeming from Compound: ",wTokenBalanceAfterRedeemingFromCompound);
-
-    let payeeUSDCBalance = await USDCContract.methods.balanceOf(accounts[6]).call();
-    console.log("Payee USDC balance: ",payeeUSDCBalance);
+    let payeeUSDCBalanceAfterPayout = await USDCContract.methods.balanceOf(accounts[6]).call();
+    let expectedPayeeUSDCBalanceAfterPayout = web3.utils.toBN(payeeUSDCBalanceBeforePayout).add(web3.utils.toBN(amountToPay));
     let whaleAccountBalanceAfterInterestPayout = await USDCContract.methods.balanceOf(whaleAccount).call();
-    console.log("Whale balance after tx: ",whaleAccountBalanceAfterTx);
-    console.log("Whale balance after interest payout: ",whaleAccountBalanceAfterInterestPayout);
     assert(whaleAccountBalanceAfterInterestPayout> whaleAccountBalanceAfterTx,"Wrong whale balance after payout");
+    assert.equal(expectedPayeeUSDCBalanceAfterPayout, payeeUSDCBalanceAfterPayout,"Payee USDC balance doesn't match");
+    assert.equal(contractCUSDCTokenBalanceAfterRedeeming,0,"Contract's cToken balance != 0");
+    assert(contractUSDCTokenBalanceBeforeRedeeming < contractUSDCTokenBalanceAfterRedeeming,"Contract USDC balance didn't increase");
+    assert.equal(contractCUSDCTokenBalanceBeforeRedeeming, contractCUSDCTokenBalanceAfterRedeeming,"Contract cToken balance doesn't match");
+    assert(wTokenBalanceAfterRedeeming <= 1, "Wrong wrapped token balance;")
 
   });
 
