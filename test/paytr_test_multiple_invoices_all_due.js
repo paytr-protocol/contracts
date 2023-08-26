@@ -22,7 +22,7 @@ contract("Paytr", (accounts) => {
 
       let payeeUSDCBalanceInitial = await USDCContract.methods.balanceOf(accounts[6]).call();
       let currentTime = await time.latest();
-      let numberOfDaysToAdd = web3.utils.toBN(30);
+      let numberOfDaysToAdd = web3.utils.toBN(8);
       let dueDate = web3.utils.toBN(currentTime).add((numberOfDaysToAdd).mul(web3.utils.toBN(86400))).toString();
 
       //check supply rate
@@ -54,11 +54,6 @@ contract("Paytr", (accounts) => {
       assert.equal(whaleAccountBalanceAfterTx1, expectedWhaleAccountBalanceAfterTx1,"Whale account balance doens't match expected balance after tx1");
       assert(wTokenBalanceAfterTx1 > wTokenBalanceBeforeTx1, "wToken balance hasn't changed after tx1");
 
-      //increase time and block number to force interest gathering. Without both, Truffle test throws an arithmetic overflow error
-      let currentBlockTx1 = await web3.eth.getBlockNumber();
-      await provider.request({method: 'evm_increaseTime', params: [10000000]});
-      await time.advanceBlockTo(currentBlockTx1 + 999); //999 + 1 block
-
       let cUSDCTokenBalanceBeforeTx2 = await cTokenContract.methods.balanceOf(instance.address).call();
       let wTokenBalanceBeforeTx2 = await wrapperContract.methods.balanceOf(instance.address).call();
       let whaleAccountBalanceBeforeTx2 = await USDCContract.methods.balanceOf(whaleAccount).call();
@@ -72,6 +67,11 @@ contract("Paytr", (accounts) => {
         "0x494e56332d32343002",
         {from: whaleAccount}
       );
+
+      //increase time and block number to force interest gathering. Without both, Truffle test throws an arithmetic overflow error
+      let currentBlockTx1 = await web3.eth.getBlockNumber();
+      await provider.request({method: 'evm_increaseTime', params: [10000000]});
+      await time.advanceBlockTo(currentBlockTx1 + 999); //999 + 1 block
 
       let cUSDCTokenBalanceAfterTx2 = await cTokenContract.methods.balanceOf(instance.address).call();
       let wTokenBalanceAfterTx2 = await wrapperContract.methods.balanceOf(instance.address).call();
