@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity >=0.8.0 <0.9.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC20/Utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts@4.9.3/access/Ownable.sol";
+import "@openzeppelin/contracts@4.9.3/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts@4.9.3/token/ERC20/Utils/SafeERC20.sol";
+import "@openzeppelin/contracts@4.9.3/security/Pausable.sol";
 
 
 interface IComet {
