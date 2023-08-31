@@ -79,7 +79,7 @@ contract("Paytr", (accounts) => {
     assert.equal(contractCUSDCTokenBalanceAfterRedeeming,0,"Contract's cToken balance != 0");
     assert(contractUSDCTokenBalanceBeforeRedeeming < contractUSDCTokenBalanceAfterRedeeming,"Contract USDC balance didn't increase");
     assert.equal(contractCUSDCTokenBalanceBeforeRedeeming, contractCUSDCTokenBalanceAfterRedeeming,"Contract cToken balance doesn't match");
-    assert(wTokenBalanceAfterRedeeming <= 1, "Wrong wrapped token balance;")
+    assert(wTokenBalanceAfterRedeeming <= 1, "Wrong wrapped token balance;");
 
   });
 
