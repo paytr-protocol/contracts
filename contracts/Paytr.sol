@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0 <0.9.0;
 
-import "@openzeppelin/contracts@4.9.3/access/Ownable.sol";
-import "@openzeppelin/contracts@4.9.3/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts@4.9.3/token/ERC20/Utils/SafeERC20.sol";
-import "@openzeppelin/contracts@4.9.3/security/Pausable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 
 interface IComet {
@@ -40,7 +40,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
    error InvalidAmount();
    error PaymentReferenceInUse();
    error NotAuthorized();
-   error ZeroAddressPayee();
+   error ZeroPayeeAddress();
    error ZeroFeeAddress();
    error DueDateNotAllowed();
    error NoPrePayment();
@@ -137,12 +137,12 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             if(_amount < minAmount || _amount > maxAmount) revert InvalidAmount();
             if(paymentMapping[_paymentReference].payer == msg.sender) revert PaymentReferenceInUse();
             if(paymentMapping[_paymentReference].payee == _payee) revert PaymentReferenceInUse();
-            if(_payee == address(0)) revert ZeroAddressPayee();
+            if(_payee == address(0)) revert ZeroPayeeAddress();
             if(_feeAddress == address(0)) revert ZeroFeeAddress();
             if(_dueDate < block.timestamp + minDueDateParameter || _dueDate > block.timestamp + maxDueDateParameter) revert DueDateNotAllowed();            
 
             IERC20(baseAsset).safeTransferFrom(msg.sender, address(this), _amount + _feeAmount);
-            IERC20(baseAsset).safeApprove(cometAddress, _amount + _feeAmount);
+            IERC20(baseAsset).forceApprove(cometAddress, _amount + _feeAmount);
 
             uint256 cUsdcbalanceBeforeSupply = IERC20(cometAddress).balanceOf(address(this));
             IComet(cometAddress).supply(baseAsset, _amount + _feeAmount);
