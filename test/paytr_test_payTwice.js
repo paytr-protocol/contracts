@@ -82,7 +82,7 @@ contract("Paytr", (accounts) => {
 
   });
 
-  it("should be able to use a duplicate payment reference with identical payer but different payee", async () => {
+  it("shouldn't be able to use a duplicate payment reference", async () => {
     const payee2 = accounts[8];
     await USDCContract.methods.approve(instance.address, amountToPay).send({from: accounts[4]});
 
@@ -90,7 +90,7 @@ contract("Paytr", (accounts) => {
     let numberOfDaysToAdd = web3.utils.toBN(30);
     let dueDate = web3.utils.toBN(currentTime).add((numberOfDaysToAdd).mul(web3.utils.toBN(86400))).toString();
 
-    let payment = await instance.payInvoiceERC20(
+    await truffleAssert.fails(instance.payInvoiceERC20(
       payee2,
       whaleAccount,
       dueDate,
@@ -98,8 +98,7 @@ contract("Paytr", (accounts) => {
       0,      
       "0x494e56332d32343034",
       {from: accounts[4]}
-    );
-    truffleAssert.eventEmitted(payment, "PaymentERC20Event");
+    ));
 
   });
 
