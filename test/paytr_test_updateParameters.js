@@ -52,7 +52,7 @@ contract("Paytr", (accounts) => {
         truffleAssert.ErrorType.REVERT);
       });
 
-      it("should throw an error when setting the fee% higher than 50 (feeModifier of < 5000", async () => {
+      it("should throw an error when setting the fee% higher than 50 (feeModifier of < 5000)", async () => {
         await truffleAssert.fails(instance.setContractParameters(
             4999, // >50% fee
             minDueDateParameter,

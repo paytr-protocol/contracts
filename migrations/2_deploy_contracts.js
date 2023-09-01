@@ -2,7 +2,7 @@ const Paytr = artifacts.require("Paytr.sol");
 
 let minDueDateParameter = 7 * 86400;
 let maxDueDateParameter = 365 * 86400;
-let minAmountParameter = 10;
+let minAmountParameter = 10 * 10**6;
 let maxAmountParameter = 100_000 * 10**6;
 let maxPayOutArraySize = 30;
 

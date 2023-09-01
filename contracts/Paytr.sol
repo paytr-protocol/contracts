@@ -134,6 +134,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         bytes calldata _paymentReference
         ) public nonReentrant whenNotPaused {
 
+            if(paymentMapping[_paymentReference].amount != 0) revert PaymentReferenceInUse();
             if(_amount < minAmount || _amount > maxAmount) revert InvalidAmount();
             if(paymentMapping[_paymentReference].payer == msg.sender) revert PaymentReferenceInUse();
             if(paymentMapping[_paymentReference].payee == _payee) revert PaymentReferenceInUse();
@@ -178,55 +179,55 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
        if(payoutReferencesArrayLength == 0 || payoutReferencesArrayLength > maxPayoutArraySize) revert InvalidArrayLength();
 
        for (; i < payoutReferencesArrayLength;) {
-           bytes memory _paymentReference = payoutReferencesArray[i];
-         if(paymentMapping[_paymentReference].amount == 0) revert NoPrePayment();
-         if(paymentMapping[_paymentReference].dueDate > block.timestamp) revert ReferenceNotDue();
+            bytes memory _paymentReference = payoutReferencesArray[i];
+            if(paymentMapping[_paymentReference].amount == 0) revert NoPrePayment();
+            if(paymentMapping[_paymentReference].dueDate > block.timestamp) revert ReferenceNotDue();
 
-           address payable _payee = payable(paymentMapping[_paymentReference].payee);
-           address payable _payer = payable(paymentMapping[_paymentReference].payer);
-           address payable _feeAddress = payable(paymentMapping[_paymentReference].feeAddress);
-           uint256 _amount = paymentMapping[_paymentReference].amount;
-           uint256 _feeAmount = paymentMapping[_paymentReference].feeAmount;
-           uint256 _wrapperSharesToRedeem = paymentMapping[_paymentReference].wrapperSharesReceived;
+            address payable _payee = payable(paymentMapping[_paymentReference].payee);
+            address payable _payer = payable(paymentMapping[_paymentReference].payer);
+            address payable _feeAddress = payable(paymentMapping[_paymentReference].feeAddress);
+            uint256 _amount = paymentMapping[_paymentReference].amount;
+            uint256 _feeAmount = paymentMapping[_paymentReference].feeAmount;
+            uint256 _wrapperSharesToRedeem = paymentMapping[_paymentReference].wrapperSharesReceived;
 
-           paymentMapping[_paymentReference].amount = 0; //prevents double payout because of the require statement
+            paymentMapping[_paymentReference].amount = 0; //prevents double payout because of the require statement
 
-           //redeem Wrapper shares and receive v3 cTokens
-           IWrapper(wrapperAddress).redeem(_wrapperSharesToRedeem, address(this), address(this));
+            //redeem Wrapper shares and receive v3 cTokens
+            IWrapper(wrapperAddress).redeem(_wrapperSharesToRedeem, address(this), address(this));
 
-           //redeem all available v3 cTokens from Compound for baseAsset tokens
-           uint256 cTokensToRedeem = IERC20(cometAddress).balanceOf(address(this));
-           IComet(cometAddress).withdraw(baseAsset, cTokensToRedeem);
+            //redeem all available v3 cTokens from Compound for baseAsset tokens
+            uint256 cTokensToRedeem = IERC20(cometAddress).balanceOf(address(this));
+            IComet(cometAddress).withdraw(baseAsset, cTokensToRedeem);
 
-           //get new USDC balance
-           uint256 _totalInterestGathered = IERC20(baseAsset).balanceOf(address(this)) - _amount;
-           uint256 _interestAmount = _totalInterestGathered * feeModifier / 10000;
+            //get new USDC balance
+            uint256 _totalInterestGathered = IERC20(baseAsset).balanceOf(address(this)) - _amount;
+            uint256 _interestAmount = _totalInterestGathered * feeModifier / 10000;
 
-           if(allowedRequestNetworkFeeAddresses[_feeAddress] == true) {
-               IERC20(baseAsset).safeApprove(ERC20FeeProxyAddress, _amount + _feeAmount);
+            if(allowedRequestNetworkFeeAddresses[_feeAddress] == true) {
+                IERC20(baseAsset).safeApprove(ERC20FeeProxyAddress, _amount + _feeAmount);
 
-               IERC20FeeProxy(ERC20FeeProxyAddress).transferFromWithReferenceAndFee(
-                    baseAsset,
-                    _payee,
-                    _amount,
-                    _paymentReference,
-                    _feeAmount,
-                    _feeAddress
-               );
+                IERC20FeeProxy(ERC20FeeProxyAddress).transferFromWithReferenceAndFee(
+                        baseAsset,
+                        _payee,
+                        _amount,
+                        _paymentReference,
+                        _feeAmount,
+                        _feeAddress
+                );
 
-           } else {
-               IERC20(baseAsset).safeTransfer(_payee, _amount);
-               if(_feeAmount != 0) {
-                    IERC20(baseAsset).safeTransfer(_feeAddress, _feeAmount);
-               }
-           }
+            } else {
+                IERC20(baseAsset).safeTransfer(_payee, _amount);
+                if(_feeAmount != 0) {
+                        IERC20(baseAsset).safeTransfer(_feeAddress, _feeAmount);
+                }
+            }
 
-           IERC20(baseAsset).safeTransfer(_payer, _interestAmount);
-           ++i;
+            IERC20(baseAsset).safeTransfer(_payer, _interestAmount);
+            ++i;
 
-           emit PayOutERC20Event(baseAsset, _payee, _feeAddress, _amount, _paymentReference, _feeAmount);
-           emit InterestPayoutEvent(baseAsset, _payer, _interestAmount, _paymentReference);
-      }
+            emit PayOutERC20Event(baseAsset, _payee, _feeAddress, _amount, _paymentReference, _feeAmount);
+            emit InterestPayoutEvent(baseAsset, _payer, _interestAmount, _paymentReference);
+        }
 
    }
 
