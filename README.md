@@ -7,7 +7,7 @@ Looking to use the Paytr protocol for your project? Check out our documentation 
 
 ## Truffle test
 
-All the tests are located in the `test/paytr.test.js`file.
+All the tests are located in the test folder.
 Install the necessary dependencies like Ganache and Truffle.
 
 We recommend to fork Mainnet and unlock an account which holds a lot of USDC, by using this command:

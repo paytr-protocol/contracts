@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0 <0.9.0;
+pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -200,11 +200,11 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             IComet(cometAddress).withdraw(baseAsset, cTokensToRedeem);
 
             //get new USDC balance
-            uint256 _totalInterestGathered = IERC20(baseAsset).balanceOf(address(this)) - _amount;
+            uint256 _totalInterestGathered = IERC20(baseAsset).balanceOf(address(this)) - _amount - _feeAmount;
             uint256 _interestAmount = _totalInterestGathered * feeModifier / 10000;
 
             if(allowedRequestNetworkFeeAddresses[_feeAddress] == true) {
-                IERC20(baseAsset).safeApprove(ERC20FeeProxyAddress, _amount + _feeAmount);
+                IERC20(baseAsset).forceApprove(ERC20FeeProxyAddress, _amount + _feeAmount);
 
                 IERC20FeeProxy(ERC20FeeProxyAddress).transferFromWithReferenceAndFee(
                         baseAsset,
