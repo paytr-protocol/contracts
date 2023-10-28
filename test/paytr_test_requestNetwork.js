@@ -14,14 +14,14 @@ contract("Paytr", (accounts) => {
 
     let requestNetworkFeeAddress = "0xa9cEaA10c12dcB33BAbC2D779e37732311504652";
     let cometSupplyRateParam = web3.utils.toBN(10**18);
-    let amountToPay = 150000000; //150 USDC
+    let amountToPay = 100 * (10**6);
     let feeAmount = 100000; //0.10 USDC
 
     describe("Set Request ERC20FeeProxy address and route payments", () => {
 
         it("The contract owner should be able to set a ERC20FeeProxy contract address", async () => {
 
-            await instance.setERC20FeeProxy("0x370DE27fdb7D1Ff1e1BaA7D11c5820a324Cf623C", {from: accounts[0]});
+            await instance.setERC20FeeProxy("0x131eb294E3803F23dc2882AB795631A12D1d8929", {from: accounts[0]});
 
         });
 

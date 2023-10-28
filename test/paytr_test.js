@@ -4,7 +4,7 @@ const { time } = require("@openzeppelin/test-helpers");
 const Paytr = artifacts.require("Paytr");
 const {CometContract, wrapperContract, USDCContract, cTokenContract, whaleAccount, provider} = require('./helpers/parameters');
 
-let amountToPay = 150000000;
+let amountToPay = 100 * (10**6);
 let cometSupplyRateParam = web3.utils.toBN(10**18);
 
 contract("Paytr", (accounts) => {  
@@ -20,6 +20,7 @@ contract("Paytr", (accounts) => {
     //check supply rate
     let supplyRate = await CometContract.methods.getSupplyRate(cometSupplyRateParam).call();
     assert(supplyRate > 0);
+    console.log(whaleAccount);
 
     await USDCContract.methods.approve(instance.address, 1000000000000).send({from: whaleAccount});
     let wTokenBalanceBeforeTx = await wrapperContract.methods.balanceOf(instance.address).call();
@@ -64,7 +65,7 @@ contract("Paytr", (accounts) => {
     let redeemArray = [];
     redeemArray.push("0x494e56332d32343034");
 
-    //test redeem from Compound
+    //test payout
     await instance.payOutERC20Invoice(redeemArray);
 
     let contractCUSDCTokenBalanceAfterRedeeming = await cTokenContract.methods.balanceOf(instance.address).call();
@@ -79,7 +80,7 @@ contract("Paytr", (accounts) => {
     assert.equal(contractCUSDCTokenBalanceAfterRedeeming,0,"Contract's cToken balance != 0");
     assert(contractUSDCTokenBalanceBeforeRedeeming < contractUSDCTokenBalanceAfterRedeeming,"Contract USDC balance didn't increase");
     assert.equal(contractCUSDCTokenBalanceBeforeRedeeming, contractCUSDCTokenBalanceAfterRedeeming,"Contract cToken balance doesn't match");
-    assert(wTokenBalanceAfterRedeeming <= 1, "Wrong wrapped token balance;");
+    assert(wTokenBalanceAfterRedeeming < 1, "Wrong wrapped token balance;");
 
   });
 
