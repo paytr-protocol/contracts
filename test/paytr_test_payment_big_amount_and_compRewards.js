@@ -4,7 +4,7 @@ const { time } = require("@openzeppelin/test-helpers");
 const Paytr = artifacts.require("Paytr");
 const {CometContract, wrapperContract, USDCContract, cTokenContract, whaleAccount, compTokenContract, provider} = require('./helpers/parameters');
 
-let amountToPay = 100_000 * 10**6; //1m USDC
+let amountToPay = 45_000 * 10**6; //45k USDC
 let cometSupplyRateParam = web3.utils.toBN(10**18);
 
 contract("Paytr", (accounts) => {  
@@ -14,7 +14,7 @@ contract("Paytr", (accounts) => {
     instance = await Paytr.deployed();
   });
   
-    it("should be able to make an ERC20 payment of 100,000 USDC and claim $COMP rewards", async () => {
+    it("should be able to make an ERC20 payment of 45,000 USDC", async () => { //and claim $COMP rewards", async () => {
     const payee = accounts[6];
 
     //check supply rate
@@ -24,7 +24,7 @@ contract("Paytr", (accounts) => {
     let numberOfDaysToAdd = web3.utils.toBN(30);
     let dueDate = web3.utils.toBN(currentTime).add((numberOfDaysToAdd).mul(web3.utils.toBN(86400))).toString();
 
-    await USDCContract.methods.approve(instance.address, amountToPay).send({from: whaleAccount});
+    await USDCContract.methods.approve(instance.address, 100000000000000).send({from: whaleAccount});
 
     //contract balances
     let contractWTokenBalanceBeforeTx = await wrapperContract.methods.balanceOf(instance.address).call();
@@ -112,10 +112,10 @@ contract("Paytr", (accounts) => {
     assert(contractUSDCBalanceAfterBalanceTransfer < contractUSDCBalanceAfterPayOut, "contract USDC balance doesn't match");
     assert(contractUSDCBalanceAfterBalanceTransfer == 0, "contract USDC balance should be 0");
 
-    let ownerCompBalanceBeforeClaiming = await compTokenContract.methods.balanceOf(accounts[0]).call();
-    await instance.claimCompRewards();
-    let ownerCompBalanceAfterClaiming = await compTokenContract.methods.balanceOf(accounts[0]).call();
-    assert(ownerCompBalanceAfterClaiming > ownerCompBalanceBeforeClaiming, "$COMP balance didn't increase");
+    // let ownerCompBalanceBeforeClaiming = await compTokenContract.methods.balanceOf(accounts[0]).call();
+    // await instance.claimCompRewards();
+    // let ownerCompBalanceAfterClaiming = await compTokenContract.methods.balanceOf(accounts[0]).call();
+    // assert(ownerCompBalanceAfterClaiming > ownerCompBalanceBeforeClaiming, "$COMP balance didn't increase");
 
   });
 

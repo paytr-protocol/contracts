@@ -4,7 +4,7 @@ const { time } = require("@openzeppelin/test-helpers");
 const Paytr = artifacts.require("Paytr");
 const {CometContract, wrapperContract, USDCContract, cTokenContract, whaleAccount, provider} = require('./helpers/parameters');
 
-let amountToPay = 150000000;
+let amountToPay = 100 * (10**6);
 let cometSupplyRateParam = web3.utils.toBN(10**18);
 
 contract("Paytr", (accounts) => {  
