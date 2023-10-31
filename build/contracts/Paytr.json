@@ -31388,12 +31388,12 @@
         }
       },
       "links": {},
-      "address": "0x9bF8039B7D615a48fFAC6E59c7C840d633fD0b2b",
-      "transactionHash": "0x763b716975c82b68c01afba993ae0645b3a6971d199e60b1c621b7d7ab6e1a16"
+      "address": "0x96720AcD982792611Dcd0310191a1781351C1a18",
+      "transactionHash": "0xcdf40010fcfe0925b3b923c718731c95297fc6b9719aea22db747ec8b1d4aa62"
     }
   },
   "schemaVersion": "3.4.14",
-  "updatedAt": "2023-10-27T19:07:04.979Z",
+  "updatedAt": "2023-10-30T20:09:56.959Z",
   "networkType": "ethereum",
   "devdoc": {
     "events": {
