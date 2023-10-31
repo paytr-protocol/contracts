@@ -2173,12 +2173,12 @@
     "80001": {
       "events": {},
       "links": {},
-      "address": "0xE1597EA637c7736632Bb09e7258279f713149e48",
-      "transactionHash": "0x1da13425d919ef5ff60b79533c30c344b3d269aea9a908b6888421cb64ff2a6e"
+      "address": "0x9b9ce8f8fF091a9157e37624317466FD8023e55F",
+      "transactionHash": "0x6c7f5f827509d6aa25e71d2142a823ba4a2afa7cf698fd411b1f7f8342e563f4"
     }
   },
   "schemaVersion": "3.4.14",
-  "updatedAt": "2023-10-27T19:07:04.986Z",
+  "updatedAt": "2023-10-30T20:09:56.964Z",
   "networkType": "ethereum",
   "devdoc": {
     "kind": "dev",

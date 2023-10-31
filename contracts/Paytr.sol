@@ -223,7 +223,10 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             }
 
             IERC20(baseAsset).safeTransfer(_payer, _interestAmount);
-            ++i;
+            unchecked {
+                ++i;
+            }
+            
 
             emit PayOutERC20Event(baseAsset, _payee, _feeAddress, _amount, _paymentReference, _feeAmount);
             emit InterestPayoutEvent(baseAsset, _payer, _interestAmount, _paymentReference);
