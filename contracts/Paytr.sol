@@ -56,14 +56,14 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
 
    address immutable baseAsset;
    address ERC20FeeProxyAddress;
-   address immutable  wrapperAddress;
-   address immutable  cometAddress;
+   address immutable wrapperAddress;
+   address immutable cometAddress;
    uint8 public maxPayoutArraySize;
    uint16 public feeModifier;
    uint256 public minDueDateParameter;
    uint256 public maxDueDateParameter;   
-   uint256 public minAmount;
-   uint256 public maxAmount;
+   uint256 public minAmountParameter;
+   uint256 public maxAmountParameter;
 
    struct PaymentERC20 {
        uint256 amount;
@@ -75,15 +75,15 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
        address feeAddress;
    }
 
-   constructor(address _cometAddress, address _wrapperAddress, uint16 _feeModifier, uint256 _minDueDateParameter, uint256 _maxDueDateParameter, uint256 _minAmount, uint256 _maxAmount, uint8 _maxPayoutArraySize) {
+   constructor(address _cometAddress, address _wrapperAddress, uint16 _feeModifier, uint256 _minDueDateParameter, uint256 _maxDueDateParameter, uint256 _minAmountParameter, uint256 _maxAmountParameter, uint8 _maxPayoutArraySize) {
        cometAddress = _cometAddress;
        baseAsset = IComet(cometAddress).baseToken();
        wrapperAddress = _wrapperAddress;
        feeModifier = _feeModifier;
        minDueDateParameter = _minDueDateParameter;	
        maxDueDateParameter = _maxDueDateParameter;
-       minAmount = _minAmount;
-       maxAmount = _maxAmount;
+       minAmountParameter = _minAmountParameter;
+       maxAmountParameter = _maxAmountParameter;
        maxPayoutArraySize = _maxPayoutArraySize;
        IComet(cometAddress).allow(wrapperAddress, true);
    }
@@ -135,7 +135,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         ) public nonReentrant whenNotPaused {
 
             if(paymentMapping[_paymentReference].amount != 0) revert PaymentReferenceInUse();
-            if(_amount < minAmount || _amount > maxAmount) revert InvalidAmount();
+            if(_amount < minAmountParameter || _amount > maxAmountParameter) revert InvalidAmount();
             if(paymentMapping[_paymentReference].payer == msg.sender) revert PaymentReferenceInUse();
             if(paymentMapping[_paymentReference].payee == _payee) revert PaymentReferenceInUse();
             if(_payee == address(0)) revert ZeroPayeeAddress();
@@ -242,20 +242,20 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
        IERC20(baseAsset).safeTransfer(owner(), IERC20(baseAsset).balanceOf(address(this)));
    }
 
-   function setContractParameters(uint16 _feeModifier, uint256 _minDueDateParameter, uint256 _maxDueDateParameter, uint256 _minAmount, uint256 _maxAmount, uint8 _maxPayoutArraySize) external onlyOwner {
+   function setContractParameters(uint16 _feeModifier, uint256 _minDueDateParameter, uint256 _maxDueDateParameter, uint256 _minAmountParameter, uint256 _maxAmountParameter, uint8 _maxPayoutArraySize) external onlyOwner {
          if(_feeModifier < 5000 || _feeModifier > 10000 ) revert InvalidFeeModifier();
          if(_minDueDateParameter < 5 * 86400) revert InvalidMinDueDate();
          if(_maxDueDateParameter > 365 * 86400) revert InvalidMaxDueDate();
-         if(_minAmount < 1) revert InvalidMinAmount();
+         if(_minAmountParameter < 1) revert InvalidMinAmount();
          if(_maxPayoutArraySize == 0) revert InvalidMaxArraySize();
          feeModifier = _feeModifier;
          minDueDateParameter = _minDueDateParameter;
          maxDueDateParameter = _maxDueDateParameter;
-         minAmount = _minAmount;
-         maxAmount = _maxAmount;
+         minAmountParameter = _minAmountParameter;
+         maxAmountParameter = _maxAmountParameter;
          maxPayoutArraySize = _maxPayoutArraySize;
 
-         emit ContractParametersUpdatedEvent(feeModifier, minDueDateParameter, maxDueDateParameter, minAmount, maxAmount, maxPayoutArraySize);
+         emit ContractParametersUpdatedEvent(feeModifier, minDueDateParameter, maxDueDateParameter, minAmountParameter, maxAmountParameter, maxPayoutArraySize);
    }
 
    function addRequestNetworkFeeAddress(address _requestNetworkFeeAddress) external onlyOwner {
