@@ -58,12 +58,12 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
    address ERC20FeeProxyAddress;
    address immutable  wrapperAddress;
    address immutable  cometAddress;
-   uint8 maxPayoutArraySize;
-   uint16 feeModifier;
-   uint256 minDueDateParameter;
-   uint256 maxDueDateParameter;   
-   uint256 minAmount;
-   uint256 maxAmount;
+   uint8 public maxPayoutArraySize;
+   uint16 public feeModifier;
+   uint256 public minDueDateParameter;
+   uint256 public maxDueDateParameter;   
+   uint256 public minAmount;
+   uint256 public maxAmount;
 
    struct PaymentERC20 {
        uint256 amount;
