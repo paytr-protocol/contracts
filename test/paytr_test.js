@@ -20,7 +20,6 @@ contract("Paytr", (accounts) => {
     //check supply rate
     let supplyRate = await CometContract.methods.getSupplyRate(cometSupplyRateParam).call();
     assert(supplyRate > 0);
-    console.log(whaleAccount);
 
     await USDCContract.methods.approve(instance.address, 1000000000000).send({from: whaleAccount});
     let wTokenBalanceBeforeTx = await wrapperContract.methods.balanceOf(instance.address).call();
