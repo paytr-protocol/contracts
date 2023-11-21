@@ -162,7 +162,15 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
     function payOutERC20Invoice(bytes[] calldata payoutReferencesArray) external nonReentrant {
 
         PaymentERC20 memory paymentERC20;
-        uint256 payoutReferencesArrayLength = payoutReferencesArray.length;       
+        uint256 payoutReferencesArrayLength = payoutReferencesArray.length;
+        uint256 assetsToRedeem;
+        uint256 _totalInterestGathered;
+        uint256 _interestAmount;
+        uint256 _amount;
+        uint256 _feeAmount;
+        address _payee;
+        address _payer;
+        address _feeAddress;
 
         if(payoutReferencesArrayLength == 0 || payoutReferencesArrayLength > maxPayoutArraySize) revert InvalidArrayLength();
 
@@ -172,35 +180,39 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             if(paymentERC20.amount == 0) revert NoPrePayment();
             if(paymentERC20.dueDate > block.timestamp) revert ReferenceNotDue();
 
-            address payable _payee = payable(paymentERC20.payee);
-            address payable _payer = payable(paymentERC20.payer);
-            address payable _feeAddress = payable(paymentERC20.feeAddress);
-            uint256 _amount = paymentERC20.amount;
-            uint256 _feeAmount = paymentERC20.feeAmount;
+            _payee = paymentERC20.payee;
+            _payer = paymentERC20.payer;
+            _feeAddress = paymentERC20.feeAddress;
+            _amount = paymentERC20.amount;
+            _feeAmount = paymentERC20.feeAmount;
 
             paymentERC20.amount = 0; //prevents double payout because of the require statement
 
             //redeem Wrapper shares and receive v3 cTokens
-            IWrapper(wrapperAddress).redeem(paymentERC20.wrapperSharesReceived, address(this), address(this));
+            // The "-1" substraction is needed by the Wrapper contract to prevent rounding errors.
+            assetsToRedeem = IWrapper(wrapperAddress).redeem(paymentERC20.wrapperSharesReceived, address(this), address(this)) -1;
+
+            uint256 baseAssetBalanceBeforeCometWithdraw = IERC20(baseAsset).balanceOf(address(this));
 
             //redeem all available v3 cTokens from Compound for baseAsset tokens
-            uint256 cTokensToRedeem = IERC20(cometAddress).balanceOf(address(this));
-            IComet(cometAddress).withdraw(baseAsset, cTokensToRedeem);
+            IComet(cometAddress).withdraw(baseAsset, assetsToRedeem);
+
+            uint256 baseAssetBalanceAfterCometWithdraw = IERC20(baseAsset).balanceOf(address(this));
 
             //get new USDC balance
-            uint256 _totalInterestGathered = IERC20(baseAsset).balanceOf(address(this)) - _amount - _feeAmount;
-            uint256 _interestAmount = _totalInterestGathered * feeModifier / 10000;
+            _totalInterestGathered = baseAssetBalanceAfterCometWithdraw - baseAssetBalanceBeforeCometWithdraw - _amount - _feeAmount;
+            _interestAmount = _totalInterestGathered * feeModifier / 10000;
 
             if(allowedRequestNetworkFeeAddresses[_feeAddress] == true) {
                 IERC20(baseAsset).forceApprove(ERC20FeeProxyAddress, _amount + _feeAmount);
 
                 IERC20FeeProxy(ERC20FeeProxyAddress).transferFromWithReferenceAndFee(
-                        baseAsset,
-                        _payee,
-                        _amount,
-                        _paymentReference,
-                        _feeAmount,
-                        _feeAddress
+                    baseAsset,
+                    _payee,
+                    _amount,
+                    _paymentReference,
+                    _feeAmount,
+                    _feeAddress
                 );
 
             } else {
