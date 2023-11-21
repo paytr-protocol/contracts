@@ -79,7 +79,7 @@ contract("Paytr", (accounts) => {
       let whaleAccountBalanceAfterTx2 = await USDCContract.methods.balanceOf(whaleAccount).call();
 
       assert.equal(cUSDCTokenBalanceBeforeTx2,cUSDCTokenBalanceAfterTx2,"cUSDC token balance should match because it get's (un)wrapped");
-      assert.equal(whaleAccountBalanceAfterTx2,expectedWhaleAccountBalanceAfterTx2,"Whale account balance doens't match expected balance after tx2");
+      assert.equal(whaleAccountBalanceAfterTx2,expectedWhaleAccountBalanceAfterTx2,"Whale account balance doensn't match expected balance after tx2");
       assert(wTokenBalanceAfterTx2 > wTokenBalanceBeforeTx2, "wToken balance hasn't changed");
 
       //increase time and block number to force interest gathering. Without both, Truffle test throws an arithmetic overflow error
@@ -108,7 +108,7 @@ contract("Paytr", (accounts) => {
       let expectedPayeeUSDCBalanceAfterPayout = (web3.utils.toBN(payeeUSDCBalanceInitial).add(web3.utils.toBN(amountToPayInv1)).add(web3.utils.toBN(amountToPayInv2))).toString();
       
       assert(cUSDCTokenBalanceAfterRedeemingFromCompound == 0, "cUSDC token balance should be 0");
-      assert(USDCTokenBalanceBeforeRedeemingFromCompound < USDCTokenBalanceAfterRedeemingFromCompound, "Contract's Contract's USDC balance doesn't match");
+      assert(USDCTokenBalanceBeforeRedeemingFromCompound < USDCTokenBalanceAfterRedeemingFromCompound, "Contract's USDC balance doesn't match");
       assert(wTokenBalanceAfterRedeemingFromCompound <= 1, "Contract wToken balance > 1");
       assert(whaleAccountBalanceAfterInterestPayout > whaleAccountBalanceAfterTx2,"Wrong whale balance after interest payout");
       assert.equal(expectedPayeeUSDCBalanceAfterPayout, payeeUSDCBalance,"Payee USDC balance mismatch");
