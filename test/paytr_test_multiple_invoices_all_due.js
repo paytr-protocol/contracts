@@ -103,10 +103,11 @@ contract("Paytr", (accounts) => {
       let cUSDCTokenBalanceAfterRedeemingFromCompound = await cTokenContract.methods.balanceOf(instance.address).call();
       let USDCTokenBalanceAfterRedeemingFromCompound = await USDCContract.methods.balanceOf(instance.address).call();
       let wTokenBalanceAfterRedeemingFromCompound = await wrapperContract.methods.balanceOf(instance.address).call();
-      let payeeUSDCBalance = await USDCContract.methods.balanceOf(accounts[6]).call();
+      let payeeUSDCBalance = await USDCContract.methods.balanceOf(payeeInv1).call();
       let whaleAccountBalanceAfterInterestPayout = await USDCContract.methods.balanceOf(whaleAccount).call();
       let expectedPayeeUSDCBalanceAfterPayout = (web3.utils.toBN(payeeUSDCBalanceInitial).add(web3.utils.toBN(amountToPayInv1)).add(web3.utils.toBN(amountToPayInv2))).toString();
-      
+      console.log("Expected:",expectedPayeeUSDCBalanceAfterPayout);
+      console.log("Payee balance:",payeeUSDCBalance);
       assert(cUSDCTokenBalanceAfterRedeemingFromCompound == 0, "cUSDC token balance should be 0");
       assert(USDCTokenBalanceBeforeRedeemingFromCompound < USDCTokenBalanceAfterRedeemingFromCompound, "Contract's USDC balance doesn't match");
       assert(wTokenBalanceAfterRedeemingFromCompound <= 1, "Contract wToken balance > 1");

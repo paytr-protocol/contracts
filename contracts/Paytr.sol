@@ -63,14 +63,14 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
    uint256 public minAmountParameter;
    uint256 public maxAmountParameter;
 
-   struct PaymentERC20 {
-       uint256 amount;
-       uint256 feeAmount;
-       uint256 dueDate;
-       uint256 wrapperSharesReceived;
-       address payer;
-       address payee;
-       address feeAddress;
+    struct PaymentERC20 {
+        uint256 amount;
+        uint256 feeAmount;
+        uint256 dueDate;
+        uint256 wrapperSharesReceived;
+        address payer;
+        address payee;
+        address feeAddress;
     }
 
     constructor(address _cometAddress, address _wrapperAddress, uint16 _feeModifier, uint256 _minDueDateParameter, uint256 _maxDueDateParameter, uint256 _minAmountParameter, uint256 _maxAmountParameter, uint8 _maxPayoutArraySize) {
@@ -90,21 +90,18 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
     event PayOutERC20Event(address tokenAddress, address payee, address feeAddress, uint256 amount, bytes paymentReference, uint256 feeAmount);
     event InterestPayoutEvent(address tokenAddress, address payee, uint256 interestAmount, bytes paymentReference);
     event ContractParametersUpdatedEvent(uint16 feeModifier, uint256 minDueDateParameter, uint256 maxDueDateParameter, uint256 minAmount, uint256 maxAmount, uint8 maxPayoutArraySize);
+    event AddRequestNetworkFeeAddressEvent(address RequestNetworkFeeAddress);
+    event RemoveRequestNetworkFeeAddressEvent(address RequestNetworkFeeAddress);
+    event setERC20FeeProxyEvent(address ERC20FeeProxyAddress);
 
-    /// @notice paymentMapping keeps track of the paid invoices.
+    /// @notice paymentMapping keeps track of all the payments.
     mapping(bytes => PaymentERC20) public paymentMapping;
 
     /// @notice allowedRequestNetworkFeeAddresses makes sure ERC20 payments originating from the Request Network protocol go through the correct ERC20FeeProxy contract.
     /// @notice This makes sure Request Network can detect the payment.
     mapping(address => bool) public allowedRequestNetworkFeeAddresses;
 
-    /// @notice modifier only allows payer to use this function.
-    modifier OnlyPayer(bytes memory _paymentReference) {
-       if(msg.sender != paymentMapping[_paymentReference].payer) revert NotAuthorized();
-       _;
-    }
-
-    /// @notice Make a payment using an ERC20 token.
+    /// @notice Make a payment using the Comet's baseAsset.
     /// @notice This function can't be used while it's paused.
     /// @param _payee The receiver of the payment.
     /// @param _feeAddress When using an additional fee, this is the address that will receive the _feeAmount.
@@ -124,12 +121,15 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         bytes calldata _paymentReference
         ) public nonReentrant whenNotPaused {
 
-            if(paymentMapping[_paymentReference].amount != 0) revert PaymentReferenceInUse();
-            if(_amount < minAmountParameter || _amount > maxAmountParameter) revert InvalidAmount();
-            if(paymentMapping[_paymentReference].payer == msg.sender) revert PaymentReferenceInUse();
-            if(paymentMapping[_paymentReference].payee == _payee) revert PaymentReferenceInUse();
+            PaymentERC20 memory paymentERC20;
+            paymentERC20 = paymentMapping[_paymentReference];
+
             if(_payee == address(0)) revert ZeroPayeeAddress();
             if(_feeAddress == address(0)) revert ZeroFeeAddress();
+            if(paymentERC20.amount != 0) revert PaymentReferenceInUse();
+            if(paymentERC20.payer == msg.sender) revert PaymentReferenceInUse();
+            if(paymentERC20.payee == _payee) revert PaymentReferenceInUse();            
+            if(_amount < minAmountParameter || _amount > maxAmountParameter) revert InvalidAmount();
             if(_dueDate < block.timestamp + minDueDateParameter || _dueDate > block.timestamp + maxDueDateParameter) revert DueDateNotAllowed();            
 
             IERC20(baseAsset).safeTransferFrom(msg.sender, address(this), _amount + _feeAmount);
@@ -141,16 +141,14 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             uint256 cUsdcAmountToWrap = cUsdcbalanceAfterSupply - cUsdcbalanceBeforeSupply;         
 
             uint256 wrappedShares = IWrapper(wrapperAddress).deposit(cUsdcAmountToWrap, address(this));
-
-            paymentMapping[_paymentReference] = PaymentERC20(
-                _amount,
-                _feeAmount,
-                _dueDate,
-                wrappedShares,
-                msg.sender,
-                _payee,
-                _feeAddress     
-            );
+            
+            paymentERC20.amount = _amount;
+            paymentERC20.feeAmount = _feeAmount;
+            paymentERC20.dueDate = _dueDate;
+            paymentERC20.wrapperSharesReceived = wrappedShares;
+            paymentERC20.payer = msg.sender;
+            paymentERC20.payee = _payee;
+            paymentERC20.feeAddress = _feeAddress;
 
         emit PaymentERC20Event(baseAsset, _payee, _feeAddress, _amount, _dueDate, _feeAmount, _paymentReference);         
     }
@@ -259,10 +257,17 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
 
     function addRequestNetworkFeeAddress(address _requestNetworkFeeAddress) external onlyOwner {
         allowedRequestNetworkFeeAddresses[_requestNetworkFeeAddress] = true;
+        emit AddRequestNetworkFeeAddressEvent(_requestNetworkFeeAddress);
+    }
+
+    function removeRequestNetworkFeeAddress(address _requestNetworkFeeAddress) external onlyOwner {
+        allowedRequestNetworkFeeAddresses[_requestNetworkFeeAddress] = false;
+        emit RemoveRequestNetworkFeeAddressEvent(_requestNetworkFeeAddress);
     }
 
     function setERC20FeeProxy(address _ERC20FeeProxyAddress) external onlyOwner {
         ERC20FeeProxyAddress = _ERC20FeeProxyAddress;
+        emit setERC20FeeProxyEvent(ERC20FeeProxyAddress);
     }
 
     function pause() external onlyOwner {
