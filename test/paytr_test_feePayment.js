@@ -75,7 +75,6 @@ contract("Paytr", (accounts) => {
     let wTokenBalanceAfterRedeeming = await wrapperContract.methods.balanceOf(instance.address).call();
     let feeReceiverAccountBalanceAfterTx = await USDCContract.methods.balanceOf(feeReceiver).call();
     let expectedFeeReceiverBalanceAfterTx = web3.utils.toBN(feeReceiverAccountBalanceBeforeTx).add(web3.utils.toBN(feeAmount)).toString();
-    console.log("Fee receiver USDC balance after tx: ",feeReceiverAccountBalanceAfterTx);
 
     let payeeUSDCBalanceAfterPayout = await USDCContract.methods.balanceOf(accounts[6]).call();
     let expectedPayeeUSDCBalanceAfterPayout = web3.utils.toBN(payeeUSDCBalanceBeforePayout).add(web3.utils.toBN(amountToPay));

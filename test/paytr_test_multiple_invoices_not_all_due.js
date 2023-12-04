@@ -81,7 +81,6 @@ contract("Paytr", (accounts) => {
 
       let cUSDCTokenBalanceBeforeTx3 = await cTokenContract.methods.balanceOf(instance.address).call();
       let wTokenBalanceBeforeTx3 = await wrapperContract.methods.balanceOf(instance.address).call();
-      console.log("wToken balance before tx3: ",wTokenBalanceBeforeTx3);
       let whaleAccountBalanceBeforeTx3 = await USDCContract.methods.balanceOf(whaleAccount).call();
       //payment invoice 3 ref. 0x494e56332d32343003
       await instance.payInvoiceERC20(
@@ -96,7 +95,6 @@ contract("Paytr", (accounts) => {
 
       let cUSDCTokenBalanceAfterTx3 = await cTokenContract.methods.balanceOf(instance.address).call();
       let wTokenBalanceAfterTx3 = await wrapperContract.methods.balanceOf(instance.address).call();
-      console.log("wToken balance after tx3: ",wTokenBalanceAfterTx3);
       let expectedWhaleAccountBalanceAfterTx3 = web3.utils.toBN(whaleAccountBalanceBeforeTx3).sub(web3.utils.toBN(amountToPayInv3)).toString();
       let whaleAccountBalanceAfterTx3 = await USDCContract.methods.balanceOf(whaleAccount).call();
 
