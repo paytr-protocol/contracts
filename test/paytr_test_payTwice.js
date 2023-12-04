@@ -82,7 +82,7 @@ contract("Paytr", (accounts) => {
 
   });
 
-  it("shouldn't be able to use a duplicate payment reference", async () => {
+  it("shouldn't be able to use a duplicate payment reference when the payment reference hasn't been redeemed yet", async () => {
     const payee2 = accounts[8];
     await USDCContract.methods.approve(instance.address, amountToPay).send({from: accounts[4]});
 
@@ -99,6 +99,58 @@ contract("Paytr", (accounts) => {
       "0x494e56332d32343034",
       {from: accounts[4]}
     ));
+
+  });
+
+  it("should be able to use a duplicate payment reference when the payment reference has been redeemed and the payee is different", async () => {
+    //check supply rate
+    let supplyRate = await CometContract.methods.getSupplyRate(cometSupplyRateParam).call();
+    assert(supplyRate > 0);
+    const payee2 = accounts[8];
+    const payee3 = accounts[9];
+
+    await USDCContract.methods.approve(instance.address, 1000000000000).send({from: whaleAccount});
+
+    let currentTimeTx1 = await time.latest();
+    let numberOfDaysToAddTx1 = web3.utils.toBN(30);
+    let dueDateTx1 = web3.utils.toBN(currentTimeTx1).add((numberOfDaysToAddTx1).mul(web3.utils.toBN(86400))).toString();
+
+    let paymentTx1 = await instance.payInvoiceERC20(
+      payee2,
+      whaleAccount,
+      dueDateTx1,
+      amountToPay,
+      0,      
+      "0x494e56332d32340001",
+      {from: whaleAccount}
+    );
+    truffleAssert.eventEmitted(paymentTx1, "PaymentERC20Event");
+    //increase time and block number to force interest gathering. Without both, Truffle test throws an arithmetic overflow error
+    let currentBlock = await web3.eth.getBlockNumber();
+    await provider.request({method: 'evm_increaseTime', params: [10000000]});
+    await time.advanceBlockTo(currentBlock + 999); //999 + 1 block
+
+    //create array with payment references to redeem
+    let redeemArray = [];
+    redeemArray.push("0x494e56332d32340001");
+
+    //test payout
+    await instance.payOutERC20Invoice(redeemArray);
+
+    let currentTimeTx2 = await time.latest();
+    let numberOfDaysToAddTx2 = web3.utils.toBN(30);
+    let dueDateTx2 = web3.utils.toBN(currentTimeTx2).add((numberOfDaysToAddTx2).mul(web3.utils.toBN(86400))).toString();
+
+    let paymentTx2 = await instance.payInvoiceERC20(
+      payee3,
+      whaleAccount,
+      dueDateTx2,
+      amountToPay,
+      0,      
+      "0x494e56332d32340001",
+      {from: whaleAccount}
+    );
+    truffleAssert.eventEmitted(paymentTx2, "PaymentERC20Event");
 
   });
 
