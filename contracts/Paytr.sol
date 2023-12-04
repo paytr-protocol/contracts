@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 
-
 interface IComet {
    function supply(address asset, uint amount) external;
    function withdraw(address asset, uint amount) external;
@@ -121,96 +120,86 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         bytes calldata _paymentReference
         ) public nonReentrant whenNotPaused {
 
-            PaymentERC20 memory paymentERC20;
-            paymentERC20 = paymentMapping[_paymentReference];
+            PaymentERC20 memory paymentERC20 = paymentMapping[_paymentReference];
+            uint256 totalAmount = _amount + _feeAmount;
 
             if(_payee == address(0)) revert ZeroPayeeAddress();
             if(_feeAddress == address(0)) revert ZeroFeeAddress();
             if(paymentERC20.amount != 0) revert PaymentReferenceInUse();
-            if(paymentERC20.payer == msg.sender) revert PaymentReferenceInUse();
-            if(paymentERC20.payee == _payee) revert PaymentReferenceInUse();            
+            if(paymentERC20.payee == _payee) revert PaymentReferenceInUse();
             if(_amount < minAmountParameter || _amount > maxAmountParameter) revert InvalidAmount();
             if(_dueDate < block.timestamp + minDueDateParameter || _dueDate > block.timestamp + maxDueDateParameter) revert DueDateNotAllowed();            
 
-            IERC20(baseAsset).safeTransferFrom(msg.sender, address(this), _amount + _feeAmount);
-            IERC20(baseAsset).forceApprove(cometAddress, _amount + _feeAmount);
+            IERC20(baseAsset).safeTransferFrom(msg.sender, address(this), totalAmount);
+            IERC20(baseAsset).forceApprove(cometAddress, totalAmount);
 
             uint256 cUsdcbalanceBeforeSupply = IERC20(cometAddress).balanceOf(address(this));
-            IComet(cometAddress).supply(baseAsset, _amount + _feeAmount);
+            IComet(cometAddress).supply(baseAsset, totalAmount);
             uint256 cUsdcbalanceAfterSupply = IERC20(cometAddress).balanceOf(address(this));
             uint256 cUsdcAmountToWrap = cUsdcbalanceAfterSupply - cUsdcbalanceBeforeSupply;         
 
             uint256 wrappedShares = IWrapper(wrapperAddress).deposit(cUsdcAmountToWrap, address(this));
-            
-            paymentERC20.amount = _amount;
-            paymentERC20.feeAmount = _feeAmount;
-            paymentERC20.dueDate = _dueDate;
-            paymentERC20.wrapperSharesReceived = wrappedShares;
-            paymentERC20.payer = msg.sender;
-            paymentERC20.payee = _payee;
-            paymentERC20.feeAddress = _feeAddress;
+
+            paymentMapping[_paymentReference] = PaymentERC20(
+                _amount,
+                _feeAmount,
+                _dueDate,
+                wrappedShares,
+                msg.sender,
+                _payee,
+                _feeAddress
+            );  
 
         emit PaymentERC20Event(baseAsset, _payee, _feeAddress, _amount, _dueDate, _feeAmount, _paymentReference);         
     }
 
-    /// @notice Allows the contract to pay payee (principal amount), payer (interest amount) and fee receiver (fee amount).
-    /// @notice This function cannot be paused.
-    /// @param payoutReferencesArray Insert the bytes array of references that need to be paid out.
-    /// @dev Uses modifier nonReentrant.
+    /**                                                                             
+    * @notice Allows the contract to pay payee (principal amount), payer (interest amount) and fee receiver (fee amount).
+    This function cannot be paused.
+    * @param payoutReferencesArray Insert the bytes array of references that need to be paid out.
+    * @dev Uses modifier nonReentrant.
+    **/
     function payOutERC20Invoice(bytes[] calldata payoutReferencesArray) external nonReentrant {
 
-        PaymentERC20 memory paymentERC20;
         uint256 payoutReferencesArrayLength = payoutReferencesArray.length;
-        uint256 assetsToRedeem;
-        uint256 _totalInterestGathered;
-        uint256 _interestAmount;
-        uint256 _amount;
-        uint256 _feeAmount;
-        address _payee;
-        address _payer;
-        address _feeAddress;
 
         if(payoutReferencesArrayLength == 0 || payoutReferencesArrayLength > maxPayoutArraySize) revert InvalidArrayLength();
 
         for (uint256 i; i < payoutReferencesArrayLength;) {
             bytes memory _paymentReference = payoutReferencesArray[i];
-            paymentERC20 = paymentMapping[_paymentReference];
-            if(paymentERC20.amount == 0) revert NoPrePayment();
-            if(paymentERC20.dueDate > block.timestamp) revert ReferenceNotDue();
+            require(paymentMapping[_paymentReference].amount != 0,"No prepayment");
+            if(paymentMapping[_paymentReference].dueDate > block.timestamp) revert ReferenceNotDue();
 
-            _payee = paymentERC20.payee;
-            _payer = paymentERC20.payer;
-            _feeAddress = paymentERC20.feeAddress;
-            _amount = paymentERC20.amount;
-            _feeAmount = paymentERC20.feeAmount;
+            address _payee = paymentMapping[_paymentReference].payee;
+            address _payer = paymentMapping[_paymentReference].payer;
+            address _feeAddress = paymentMapping[_paymentReference].feeAddress;
+            uint256 _amount = paymentMapping[_paymentReference].amount;
+            uint256 _feeAmount = paymentMapping[_paymentReference].feeAmount;
+            uint256 _wrapperSharesToRedeem = paymentMapping[_paymentReference].wrapperSharesReceived;
 
-            paymentERC20.amount = 0; //prevents double payout because of the require statement
+            paymentMapping[_paymentReference].amount = 0; //prevents double payout because of the require statement
 
             //redeem Wrapper shares and receive v3 cTokens
-            // The "-1" substraction is needed by the Wrapper contract to prevent rounding errors.
-            assetsToRedeem = IWrapper(wrapperAddress).redeem(paymentERC20.wrapperSharesReceived, address(this), address(this)) -1;
-
-            uint256 baseAssetBalanceBeforeCometWithdraw = IERC20(baseAsset).balanceOf(address(this));
+            IWrapper(wrapperAddress).redeem(_wrapperSharesToRedeem, address(this), address(this));
 
             //redeem all available v3 cTokens from Compound for baseAsset tokens
-            IComet(cometAddress).withdraw(baseAsset, assetsToRedeem);
-
-            uint256 baseAssetBalanceAfterCometWithdraw = IERC20(baseAsset).balanceOf(address(this));
+            uint256 cTokensToRedeem = IERC20(cometAddress).balanceOf(address(this));
+            IComet(cometAddress).withdraw(baseAsset, cTokensToRedeem);
 
             //get new USDC balance
-            _totalInterestGathered = baseAssetBalanceAfterCometWithdraw - baseAssetBalanceBeforeCometWithdraw - _amount - _feeAmount;
-            _interestAmount = _totalInterestGathered * feeModifier / 10000;
+            uint256 _totalInterestGathered = IERC20(baseAsset).balanceOf(address(this)) - _amount - _feeAmount;
+            uint256 _interestAmount = _totalInterestGathered * feeModifier / 10000;
 
             if(allowedRequestNetworkFeeAddresses[_feeAddress] == true) {
                 IERC20(baseAsset).forceApprove(ERC20FeeProxyAddress, _amount + _feeAmount);
 
                 IERC20FeeProxy(ERC20FeeProxyAddress).transferFromWithReferenceAndFee(
-                    baseAsset,
-                    _payee,
-                    _amount,
-                    _paymentReference,
-                    _feeAmount,
-                    _feeAddress
+                        baseAsset,
+                        _payee,
+                        _amount,
+                        _paymentReference,
+                        _feeAmount,
+                        _feeAddress
                 );
 
             } else {
@@ -225,6 +214,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
                 ++i;
             }
             
+
             emit PayOutERC20Event(baseAsset, _payee, _feeAddress, _amount, _paymentReference, _feeAmount);
             emit InterestPayoutEvent(baseAsset, _payer, _interestAmount, _paymentReference);
         }
