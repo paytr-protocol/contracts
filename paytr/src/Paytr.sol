@@ -231,8 +231,8 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
 
     function setContractParameters(uint16 _feeModifier, uint256 _minDueDateParameter, uint256 _maxDueDateParameter, uint256 _minAmountParameter, uint256 _maxAmountParameter, uint8 _maxPayoutArraySize) external onlyOwner {
         if(_feeModifier < 5000 || _feeModifier > 10000 ) revert InvalidFeeModifier();
-        if(_minDueDateParameter < 5 * 86400) revert InvalidMinDueDate();
-        if(_maxDueDateParameter > 365 * 86400) revert InvalidMaxDueDate();
+        if(_minDueDateParameter < 5 days) revert InvalidMinDueDate();
+        if(_maxDueDateParameter > 365 days) revert InvalidMaxDueDate();
         if(_minAmountParameter < 1) revert InvalidMinAmount();
         if(_maxPayoutArraySize == 0) revert InvalidMaxArraySize();
         feeModifier = _feeModifier;
