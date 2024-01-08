@@ -182,12 +182,16 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             //redeem Wrapper shares and receive v3 cTokens
             IWrapper(wrapperAddress).redeem(_wrapperSharesToRedeem, address(this), address(this));
 
+            uint256 baseAssetBalanceBeforeCometWithdraw = IERC20(baseAsset).balanceOf(address(this));
+
             //redeem all available v3 cTokens from Compound for baseAsset tokens
             uint256 cTokensToRedeem = IERC20(cometAddress).balanceOf(address(this));
             IComet(cometAddress).withdraw(baseAsset, cTokensToRedeem);
 
+            uint256 baseAssetBalanceAfterCometWithdraw = IERC20(baseAsset).balanceOf(address(this));
+
             //get new USDC balance
-            uint256 _totalInterestGathered = IERC20(baseAsset).balanceOf(address(this)) - _amount - _feeAmount;
+            uint256 _totalInterestGathered = baseAssetBalanceAfterCometWithdraw - baseAssetBalanceBeforeCometWithdraw - _amount - _feeAmount;
             uint256 _interestAmount = _totalInterestGathered * feeModifier / 10000;
 
             if(paymentMapping[_paymentReference].shouldPayoutViaRequestNetwork == true) {
