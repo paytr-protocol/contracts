@@ -216,7 +216,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             
 
             emit PayOutERC20Event(baseAsset, _payee, _feeAddress, _amount, _paymentReference, _feeAmount);
-            //emit InterestPayoutEvent(baseAsset, _payer, _interestAmount, _paymentReference);
+            emit InterestPayoutEvent(baseAsset, _payer, _interestAmount, _paymentReference);
         }
 
     }
@@ -256,6 +256,10 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
 
     function unpause() external onlyOwner {
         _unpause();
+    }
+
+    function getMapping(bytes memory _paymentReference) public view returns(PaymentERC20 memory) {
+        return paymentMapping[_paymentReference];
     }
 
 }
