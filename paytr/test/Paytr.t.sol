@@ -27,6 +27,7 @@ contract PaytrTest is Test {
     address bob = address(0x2);
     address charlie = address(0x3);
     address dummyFeeAddress = address(0x4);
+    address owner = address(0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496);
 
     uint256 amountToPay = 1000e6;
 
@@ -39,10 +40,17 @@ contract PaytrTest is Test {
     event PaymentERC20Event(address tokenAddress, address payee, address feeAddress, uint256 amount, uint256 dueDate, uint256 feeAmount, bytes paymentReference);
     event PayOutERC20Event(address tokenAddress, address payee, address feeAddress, uint256 amount, bytes paymentReference, uint256 feeAmount);
     event InterestPayoutEvent(address tokenAddress, address payee, uint256 interestAmount, bytes paymentReference);
+    event ContractParametersUpdatedEvent(uint16 feeModifier, uint256 minDueDateParameter, uint256 maxDueDateParameter, uint256 minAmount, uint256 maxAmount, uint8 maxPayoutArraySize);
+    event setERC20FeeProxyEvent(address ERC20FeeProxyAddress);
 
     function getContractCometWrapperBalance() public view returns(uint256) {
-    uint256 contractCometWrapperBalance = cometWrapper.balanceOf(address(Paytr_Test));
-    return contractCometWrapperBalance;
+        uint256 contractCometWrapperBalance = cometWrapper.balanceOf(address(Paytr_Test));
+        return contractCometWrapperBalance;
+    }
+
+    function getContractBaseAssetBalance() public view returns(uint256) {
+        uint256 contractBaseAssetBalance = baseAsset.balanceOf(address(Paytr_Test));
+        return contractBaseAssetBalance;
     }
 
     function getAlicesBaseAssetBalance() public view returns(uint256) {
@@ -134,8 +142,8 @@ contract PaytrTest is Test {
 
     function test_payInvoiceERC20Double() public {
 
-        assert(baseAsset.allowance(alice, address(Paytr_Test)) > 1000e6);
-        assert(baseAsset.allowance(bob, address(Paytr_Test)) > 1000e6);
+        assertGt(baseAsset.allowance(alice, address(Paytr_Test)), 1000e6);
+        assertGt(baseAsset.allowance(bob, address(Paytr_Test)), 1000e6);
 
         vm.expectEmit(address(Paytr_Test));        
 
@@ -245,14 +253,14 @@ contract PaytrTest is Test {
         assertEq(getAlicesBaseAssetBalance(), expectedAlicesBaseAssetBalance); //alice receives interest after the payOutERC20Invoice has been called
         assertEq(getBobsBaseAssetBalance(), 10000e6 + amountToPay); //Bob's starting balance is 10000e6, and he is the payee of the invoice getting paid out
         assertEq(getCharliesBaseAssetBalance(), 10000e6);
-        assert(baseAsset.balanceOf(address(Paytr_Test)) > 0); //the contract receives 10% of the interest amount as fee (param 9000 in setUp)
-        assertEq(contractBaseAssetBalance, ((interestAmount + contractBaseAssetBalance) * 1000 / 10000 + 1)); //+1 due to rounding differences
+        assertGt(baseAsset.balanceOf(address(Paytr_Test)), 0); //the contract receives 10% of the interest amount as fee (param 9000 in setUp)
+        assertApproxEqAbs(contractBaseAssetBalance, (interestAmount + contractBaseAssetBalance) * 1000 / 10000, 1); ////value of 1 because of rounding differences from Comet or CometWrapper
 
         //comet (cbaseAssetv3) balances
-        assertEq(comet.balanceOf(alice), 0);
-        assertEq(comet.balanceOf(bob), 0);
-        assertEq(comet.balanceOf(charlie), 0);
-        assertEq(comet.balanceOf(address(Paytr_Test)), 0);
+        assertEq(comet.balanceOf(alice), 0, "Alice's comet balance != 0");
+        assertEq(comet.balanceOf(bob), 0, "Bob's comet balance != 0");
+        assertEq(comet.balanceOf(charlie), 0, "Charlie's comet balance != 0");
+        assertEq(comet.balanceOf(address(Paytr_Test)), 0,  "Contract comet balance != 0");
 
         //cometWrapper (wcbaseAssetv3) balances
         assertEq(getContractCometWrapperBalance(), 0);
@@ -313,9 +321,9 @@ contract PaytrTest is Test {
         );
         vm.stopPrank();
 
-        assertEq(getAlicesBaseAssetBalance(), aliceBaseAssetBalanceBeforePayment - amountToPay);
-        assertEq(getBobsBaseAssetBalance(), bobBaseAssetBalanceBeforePayment - amountToPay);
-        assertEq(getCharliesBaseAssetBalance(), charlieBaseAssetBalanceBeforePayment - amountToPay);
+        assertEq(getAlicesBaseAssetBalance(), aliceBaseAssetBalanceBeforePayment - amountToPay, "Alice's base balance mismatch");
+        assertEq(getBobsBaseAssetBalance(), bobBaseAssetBalanceBeforePayment - amountToPay, "Bobs's base balance mismatch");
+        assertEq(getCharliesBaseAssetBalance(), charlieBaseAssetBalanceBeforePayment - amountToPay, "Charlie's base balance mismatch");
 
         uint256 aliceBaseAssetBalanceBeforePayOut = getAlicesBaseAssetBalance();
         uint256 bobBaseAssetBalanceBeforePayOut = getBobsBaseAssetBalance();
@@ -357,29 +365,59 @@ contract PaytrTest is Test {
         uint256 contractWrapperBalanceAfterPayOut = getContractCometWrapperBalance();
 
         //baseAsset balances
-        assertEq(getAlicesBaseAssetBalance(), aliceBaseAssetBalanceBeforePayment - amountToPay + interestAlice); //alice receives interest from paymentReference1 and paid 1000e6 (ref. 1)
-        assertEq(getBobsBaseAssetBalance(), bobBaseAssetBalanceBeforePayment - amountToPay + amountToPay + interestBob); //bob receives interest from paymentReference2, paid 1000e6 (ref. 2) and received 1000e6 (ref. 1)
-        assertEq(getCharliesBaseAssetBalance(), charlieBaseAssetBalanceBeforePayment - amountToPay + amountToPay); //charlie does not receive interest, because paymentReference3 is not in the payOut array. He paid 1000e6 (ref. 3) and receives 1000e6 (ref. 2)
-        assertEq(interestCharlie, 0);
-        assert(baseAsset.balanceOf(address(Paytr_Test)) > 0); //the contract receives 10% of the interest amount as fee (param 9000 in setUp)
+        assertEq(getAlicesBaseAssetBalance(), aliceBaseAssetBalanceBeforePayment - amountToPay + interestAlice, "Alice's base balance mismatch"); //alice receives interest from paymentReference1 and paid 1000e6 (ref. 1)
+        assertEq(getBobsBaseAssetBalance(), bobBaseAssetBalanceBeforePayment - amountToPay + amountToPay + interestBob, "Bob's base balance mismatch"); //bob receives interest from paymentReference2, paid 1000e6 (ref. 2) and received 1000e6 (ref. 1)
+        assertEq(getCharliesBaseAssetBalance(), charlieBaseAssetBalanceBeforePayment - amountToPay + amountToPay, "Charlie's base balance mismatch"); //charlie does not receive interest, because paymentReference3 is not in the payOut array. He paid 1000e6 (ref. 3) and receives 1000e6 (ref. 2)
+        assertEq(interestCharlie, 0, "Charlie's interest != 0");
+        assertGt(baseAsset.balanceOf(address(Paytr_Test)), 0); //the contract receives 10% of the interest amount as fee (param 9000 in setUp)
         assertApproxEqAbs(contractBaseAssetBalanceAfterPayOut, grossInterest * 1000 / 10000, 2); //value of 2 because of rounding differences from Comet and/or CometWrapper
 
         // //comet (cbaseAssetv3) balances
-        assertEq(comet.balanceOf(alice), 0);
-        assertEq(comet.balanceOf(bob), 0);
-        assertEq(comet.balanceOf(charlie), 0);
-        assertEq(comet.balanceOf(address(Paytr_Test)), 0);
+        assertEq(comet.balanceOf(alice), 0, "Alice's comet balance != 0");
+        assertEq(comet.balanceOf(bob), 0, "Bob's comet balance != 0");
+        assertEq(comet.balanceOf(charlie), 0, "Charlie's comet balance != 0");
+        assertEq(comet.balanceOf(address(Paytr_Test)), 0, "Contract comet balance != 0");
 
         //cometWrapper (wcbaseAssetv3) balances
-        assert(getContractCometWrapperBalance() > 0); //needs to be > 0 because paymentReference3 is not paid out
-        assertEq(getContractCometWrapperBalance(), contractWrapperBalanceAfterPayOut);
+        assertGt(getContractCometWrapperBalance(), 0); //needs to be > 0 because paymentReference3 is not paid out
+        assertEq(getContractCometWrapperBalance(), contractWrapperBalanceAfterPayOut, "Contract wrapper balance != balance affter payout");
     
     }
 
     function test_sendBaseAssetBalance() public {
+        uint256 contractBaseAssetBalanceBeforePayOut = getContractBaseAssetBalance();
+
         test_payThreePayOutTwo();
-        vm.prank(0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496); //0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496 is the default msg.sender in Foundry (== contract owner)
+
+        vm.prank(owner); //0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496 is the default msg.sender in Foundry (== contract owner)
         Paytr_Test.claimBaseAssetBalance();
+
+        assertGt(baseAsset.balanceOf(owner), 0);
+        assertLe(getContractBaseAssetBalance(), contractBaseAssetBalanceBeforePayOut); //feeModifier can be 10000 (no fee applied), so contract base asset balance won't change
+    }
+
+    function test_setContractParameters() public {
+        vm.expectEmit(address(Paytr_Test));
+        emit ContractParametersUpdatedEvent(6000, 18 days, 365 days, 100e6, 100_000e6, 25);
+
+        vm.prank(owner);
+        Paytr_Test.setContractParameters(6000, 18 days, 365 days, 100e6, 100_000e6, 25);
+
+    }
+
+    function test_setERC20FeeProxy() public {
+        vm.expectEmit(address(Paytr_Test));
+        emit setERC20FeeProxyEvent(address(0x6));
+
+        vm.prank(owner);
+        Paytr_Test.setERC20FeeProxy(address(0x6));
+
+    }
+
+    function test_pauseAndUnpause() public {
+        vm.startPrank(owner);
+        Paytr_Test.pause();
+        Paytr_Test.unpause();
     }
 
 }
