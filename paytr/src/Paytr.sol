@@ -177,7 +177,8 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             uint256 _feeAmount = paymentMapping[_paymentReference].feeAmount;
             uint256 _wrapperSharesToRedeem = paymentMapping[_paymentReference].wrapperSharesReceived;
 
-            paymentMapping[_paymentReference].amount = 0; //prevents double payout because of the require statement
+            //paymentMapping[_paymentReference].amount = 0; //prevents double payout because of the require statement
+            delete paymentMapping[_paymentReference];
 
             //redeem Wrapper shares and receive v3 cTokens
             IWrapper(wrapperAddress).redeem(_wrapperSharesToRedeem, address(this), address(this));
