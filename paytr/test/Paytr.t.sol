@@ -42,6 +42,9 @@ contract PaytrTest is Test {
     event InterestPayoutEvent(address tokenAddress, address payee, uint256 interestAmount, bytes paymentReference);
     event ContractParametersUpdatedEvent(uint16 feeModifier, uint256 minDueDateParameter, uint256 maxDueDateParameter, uint256 minAmount, uint256 maxAmount, uint8 maxPayoutArraySize);
     event setERC20FeeProxyEvent(address ERC20FeeProxyAddress);
+    
+    //external contracts events:
+    event TransferWithReferenceAndFee(address tokenAddress, address to, uint256 amount, bytes indexed paymentReference, uint256 feeAmount, address feeAddress);
 
     function getContractCometWrapperBalance() public view returns(uint256) {
         uint256 contractCometWrapperBalance = cometWrapper.balanceOf(address(Paytr_Test));
@@ -79,6 +82,15 @@ contract PaytrTest is Test {
             30
         );
 
+        vm.label(0xF09F0369aB0a875254fB565E52226c88f10Bc839, "Comet");
+        vm.label(0xDB3cB4f2688daAB3BFf59C24cC42D4B6285828e9, "USDC");
+        vm.label(alice, "alice");
+        vm.label(bob, "bob");
+        vm.label(charlie, "charlie");
+        vm.label(address(this), "Paytr");
+        vm.label(0x131eb294E3803F23dc2882AB795631A12D1d8929, "ERC20FeeProxy contract");
+
+
         //deal baseAsset
         deal(address(baseAsset), alice, 10_000e6);
         uint256 balanceAlice = baseAsset.balanceOf(alice);
@@ -100,15 +112,17 @@ contract PaytrTest is Test {
         vm.startPrank(charlie);
         baseAsset.approve(address(Paytr_Test), 2**256 - 1);
         vm.stopPrank();
+
+        Paytr_Test.setERC20FeeProxy(0x131eb294E3803F23dc2882AB795631A12D1d8929);
     }
 
     function test_payInvoiceERC20Single() public {
 
-        assert(baseAsset.allowance(alice, address(Paytr_Test)) > 1000e6);
+        assert(baseAsset.allowance(alice, address(Paytr_Test)) > amountToPay);
 
         vm.expectEmit(address(Paytr_Test));        
 
-        emit PaymentERC20Event(baseAssetAddress, bob, dummyFeeAddress, amountToPay, block.timestamp + 10 days, 0, "0x494e56332d32343001");
+        emit PaymentERC20Event(baseAssetAddress, bob, dummyFeeAddress, amountToPay, block.timestamp + 10 days, 1000, paymentReference1);
 
         vm.prank(alice);
         Paytr_Test.payInvoiceERC20(
@@ -116,13 +130,13 @@ contract PaytrTest is Test {
             dummyFeeAddress,
             block.timestamp + 10 days,
             amountToPay,
-            0,
+            1000,
             paymentReference1,
-            false
+            true
         );
         
         //baseAsset balances
-        assertEq(getAlicesBaseAssetBalance(), 10000e6 - amountToPay);
+        assertEq(getAlicesBaseAssetBalance(), 10000e6 - amountToPay - 1000);
         assertEq(getBobsBaseAssetBalance(), 10000e6);
         assertEq(getCharliesBaseAssetBalance(), 10000e6);
         assertEq(baseAsset.balanceOf(dummyFeeAddress), 0);
@@ -136,14 +150,14 @@ contract PaytrTest is Test {
         assertEq(comet.balanceOf(address(Paytr_Test)), 0);       
         
         //cometWrapper (wcbaseAssetv3) balances
-        assertApproxEqRel(getContractCometWrapperBalance(), amountToPay, 0.1e18);
+        assertApproxEqRel(getContractCometWrapperBalance(), amountToPay + 1000, 0.1e18);
 
     }
 
     function test_payInvoiceERC20Double() public {
 
-        assertGt(baseAsset.allowance(alice, address(Paytr_Test)), 1000e6);
-        assertGt(baseAsset.allowance(bob, address(Paytr_Test)), 1000e6);
+        assertGt(baseAsset.allowance(alice, address(Paytr_Test)), amountToPay);
+        assertGt(baseAsset.allowance(bob, address(Paytr_Test)), amountToPay);
 
         vm.expectEmit(address(Paytr_Test));        
 
@@ -157,7 +171,7 @@ contract PaytrTest is Test {
             amountToPay,
             0,
             paymentReference1,
-            false
+            true
         );
         vm.stopPrank();
 
@@ -218,9 +232,13 @@ contract PaytrTest is Test {
         assert(baseAsset.allowance(alice, address(Paytr_Test)) > 1000e6);
         test_payInvoiceERC20Single();
 
-        vm.expectEmit(address(Paytr_Test));
-
         uint256 aliceBAseAssetBalanceBeforePayOut = getAlicesBaseAssetBalance();
+        payOutArray = [paymentReference1];
+        
+        //increase time to gain interest
+        vm.warp(block.timestamp + 120 days);
+
+        vm.expectEmit(address(Paytr_Test));        
 
         emit PayOutERC20Event(
             baseAssetAddress,
@@ -228,14 +246,9 @@ contract PaytrTest is Test {
             Paytr_Test.getMapping(paymentReference1).feeAddress,
             Paytr_Test.getMapping(paymentReference1).amount,
             paymentReference1,
-            0
-        ); 
+            1000
+        );
         
-        //increase time to gain interest
-        vm.warp(block.timestamp + 120 days);
-
-        //redeem
-        payOutArray = [paymentReference1];
         Paytr_Test.payOutERC20Invoice(payOutArray);
 
         uint256 interestAmount = getAlicesBaseAssetBalance() - aliceBAseAssetBalanceBeforePayOut;
@@ -247,7 +260,7 @@ contract PaytrTest is Test {
             Paytr_Test.getMapping(paymentReference1).payee,
             interestAmount,
             paymentReference1
-        );
+        );        
         
         //baseAsset balances
         assertEq(getAlicesBaseAssetBalance(), expectedAlicesBaseAssetBalance); //alice receives interest after the payOutERC20Invoice has been called
@@ -279,7 +292,7 @@ contract PaytrTest is Test {
         vm.expectEmit(address(Paytr_Test));
         emit PaymentERC20Event(baseAssetAddress, bob, dummyFeeAddress, amountToPay, block.timestamp + 10 days, 0, paymentReference1); //payer alice, payee bob
 
-        vm.prank(alice);
+        vm.startPrank(alice);
         Paytr_Test.payInvoiceERC20(
             bob,
             dummyFeeAddress,
@@ -294,7 +307,7 @@ contract PaytrTest is Test {
         vm.expectEmit(address(Paytr_Test));
         emit PaymentERC20Event(baseAssetAddress, charlie, dummyFeeAddress, amountToPay, block.timestamp + 12 days, 0, paymentReference2); //payer bob, payee charlie
 
-        vm.prank(bob);
+        vm.startPrank(bob);
         Paytr_Test.payInvoiceERC20(
             charlie,
             dummyFeeAddress,
@@ -309,7 +322,7 @@ contract PaytrTest is Test {
         vm.expectEmit(address(Paytr_Test));
         emit PaymentERC20Event(baseAssetAddress, alice, dummyFeeAddress, amountToPay, block.timestamp + 40 days, 0, paymentReference3); //payer charlie, payee alice
 
-        vm.prank(charlie);
+        vm.startPrank(charlie);
         Paytr_Test.payInvoiceERC20(
             alice,
             dummyFeeAddress,
@@ -384,15 +397,160 @@ contract PaytrTest is Test {
     
     }
 
+    function test_usePaymentReferenceTwiceAfterPayout() public {
+        //this test checks whether it's possible to pay a certain reference, have it paid out and use the same reference again
+        assert(baseAsset.allowance(alice, address(Paytr_Test)) > 1000e6);
+        assert(baseAsset.allowance(bob, address(Paytr_Test)) > 1000e6);
+        assert(baseAsset.allowance(charlie, address(Paytr_Test)) > 1000e6);
+
+        uint256 aliceBaseAssetBalanceBeforeFirstPayment = getAlicesBaseAssetBalance();
+        uint256 bobBaseAssetBalanceBeforeFirstPayment = getBobsBaseAssetBalance();
+        uint256 charlieBaseAssetBalanceBeforeFirstPayment = getCharliesBaseAssetBalance();
+
+        vm.expectEmit(address(Paytr_Test));
+        emit PaymentERC20Event(baseAssetAddress, bob, dummyFeeAddress, amountToPay, block.timestamp + 20 days, 0, paymentReference1);
+
+        vm.startPrank(alice);
+        Paytr_Test.payInvoiceERC20(
+            bob,
+            dummyFeeAddress,
+            block.timestamp + 20 days,
+            amountToPay,
+            0,
+            paymentReference1,
+            false
+        );
+        vm.stopPrank();
+
+        uint256 aliceBaseAssetBalanceAfterFirstPayment = getAlicesBaseAssetBalance();
+        uint256 bobBaseAssetBalanceAfterFirstPayment = getBobsBaseAssetBalance();
+        uint256 charlieBaseAssetBalanceAfterFirstPayment = getCharliesBaseAssetBalance();
+
+        assertEq(aliceBaseAssetBalanceAfterFirstPayment, aliceBaseAssetBalanceBeforeFirstPayment - amountToPay);
+        assertEq(bobBaseAssetBalanceAfterFirstPayment, bobBaseAssetBalanceBeforeFirstPayment);
+        assertEq(charlieBaseAssetBalanceAfterFirstPayment,charlieBaseAssetBalanceBeforeFirstPayment);
+
+        vm.warp(block.timestamp + 20 days);
+
+        vm.expectEmit(address(Paytr_Test));
+        emit PayOutERC20Event(
+            baseAssetAddress,
+            Paytr_Test.getMapping(paymentReference1).payee,
+            Paytr_Test.getMapping(paymentReference1).feeAddress,
+            Paytr_Test.getMapping(paymentReference1).amount,
+            paymentReference1,
+            0
+        );
+
+        payOutArray = [paymentReference1];
+        Paytr_Test.payOutERC20Invoice(payOutArray);
+
+        uint256 aliceBaseAssetBalanceAfterPayOut = getAlicesBaseAssetBalance();
+        uint256 bobBaseAssetBalanceAfterPayOut = getBobsBaseAssetBalance();
+        uint256 charlieBaseAssetBalanceAfterPayOut = getCharliesBaseAssetBalance();
+
+        assertGt(aliceBaseAssetBalanceAfterPayOut, aliceBaseAssetBalanceAfterFirstPayment);
+        assertGt(bobBaseAssetBalanceAfterPayOut, bobBaseAssetBalanceAfterFirstPayment);
+        assertEq(bobBaseAssetBalanceAfterPayOut, bobBaseAssetBalanceBeforeFirstPayment + amountToPay);
+        assertEq(charlieBaseAssetBalanceAfterPayOut, charlieBaseAssetBalanceBeforeFirstPayment);
+
+        vm.startPrank(alice);
+        Paytr_Test.payInvoiceERC20(
+            charlie,
+            dummyFeeAddress,
+            block.timestamp + 12 days,
+            amountToPay,
+            0,
+            paymentReference1,
+            false
+        );
+        vm.stopPrank();
+
+        uint256 aliceBaseAssetBalanceAfterSecondPayment = getAlicesBaseAssetBalance();
+        uint256 bobBaseAssetBalanceAfterSecondPayment = getBobsBaseAssetBalance();
+        uint256 charlieBaseAssetBalanceAfterSecondPayment = getCharliesBaseAssetBalance();
+
+        assertLt(aliceBaseAssetBalanceAfterSecondPayment, aliceBaseAssetBalanceAfterPayOut);
+        assertEq(aliceBaseAssetBalanceAfterSecondPayment, aliceBaseAssetBalanceAfterPayOut - amountToPay);
+        assertEq(bobBaseAssetBalanceAfterSecondPayment, bobBaseAssetBalanceAfterPayOut);
+        assertEq(charlieBaseAssetBalanceAfterSecondPayment, charlieBaseAssetBalanceAfterPayOut);
+
+    }
+
+    function test_paymentThroughRequestNetwork() public {
+        assert(baseAsset.allowance(alice, address(Paytr_Test)) > 1000e6);
+        uint256 feeAmount = 1e6;
+        address feeAddress = address(0x9);
+
+        vm.expectEmit();
+        emit PaymentERC20Event(baseAssetAddress, bob, feeAddress, amountToPay, block.timestamp + 28 days, feeAmount, paymentReference3);
+
+        vm.startPrank(alice);
+        Paytr_Test.payInvoiceERC20(
+            bob,
+            feeAddress,
+            block.timestamp + 28 days,
+            amountToPay,
+            feeAmount,
+            paymentReference3,
+            true
+        );
+        
+        //baseAsset balances
+        assertEq(getAlicesBaseAssetBalance(), 10000e6 - amountToPay - feeAmount);
+        assertEq(getBobsBaseAssetBalance(), 10000e6);
+        assertEq(getCharliesBaseAssetBalance(), 10000e6);
+        assertEq(baseAsset.balanceOf(dummyFeeAddress), 0);
+        assertEq(baseAsset.balanceOf(address(Paytr_Test)), 0);
+
+        //comet (cbaseAssetv3) balances
+        assertEq(comet.balanceOf(alice), 0);
+        assertEq(comet.balanceOf(bob), 0);
+        assertEq(comet.balanceOf(charlie), 0);
+        assertEq(comet.balanceOf(dummyFeeAddress), 0);
+        assertEq(comet.balanceOf(address(Paytr_Test)), 0);       
+        
+        //cometWrapper (wcbaseAssetv3) balances
+        assertApproxEqRel(getContractCometWrapperBalance(), amountToPay + feeAmount, 0.1e18);
+
+        vm.warp(block.timestamp + 29 days);
+
+        vm.expectEmit(address(0x131eb294E3803F23dc2882AB795631A12D1d8929));
+
+        emit TransferWithReferenceAndFee(
+            baseAssetAddress,
+            Paytr_Test.getMapping(paymentReference3).payee,
+            Paytr_Test.getMapping(paymentReference3).amount,
+            paymentReference3,
+            Paytr_Test.getMapping(paymentReference3).feeAmount,
+            Paytr_Test.getMapping(paymentReference3).feeAddress
+        );
+        
+        vm.expectEmit();
+
+        emit PayOutERC20Event(
+            baseAssetAddress,
+            Paytr_Test.getMapping(paymentReference3).payee,
+            Paytr_Test.getMapping(paymentReference3).feeAddress,
+            Paytr_Test.getMapping(paymentReference3).amount,
+            paymentReference3,
+            Paytr_Test.getMapping(paymentReference3).feeAmount
+        );
+
+        payOutArray = [paymentReference3];
+        Paytr_Test.payOutERC20Invoice(payOutArray);
+        vm.stopPrank();
+    }
+
     function test_sendBaseAssetBalance() public {
         uint256 contractBaseAssetBalanceBeforePayOut = getContractBaseAssetBalance();
 
         test_payThreePayOutTwo();
 
-        vm.prank(owner); //0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496 is the default msg.sender in Foundry (== contract owner)
+        vm.prank(owner);
         Paytr_Test.claimBaseAssetBalance();
 
-        assertGt(baseAsset.balanceOf(owner), 0);
+        assertGe(baseAsset.balanceOf(owner), 0);
         assertLe(getContractBaseAssetBalance(), contractBaseAssetBalanceBeforePayOut); //feeModifier can be 10000 (no fee applied), so contract base asset balance won't change
     }
 
@@ -407,10 +565,10 @@ contract PaytrTest is Test {
 
     function test_setERC20FeeProxy() public {
         vm.expectEmit(address(Paytr_Test));
-        emit setERC20FeeProxyEvent(address(0x6));
+        emit setERC20FeeProxyEvent(address(0x131eb294E3803F23dc2882AB795631A12D1d8929));
 
         vm.prank(owner);
-        Paytr_Test.setERC20FeeProxy(address(0x6));
+        Paytr_Test.setERC20FeeProxy(address(0x131eb294E3803F23dc2882AB795631A12D1d8929));
 
     }
 
