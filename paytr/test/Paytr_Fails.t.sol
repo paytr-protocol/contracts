@@ -51,7 +51,7 @@ contract PaytrTest is Test {
     event PaymentERC20Event(address tokenAddress, address payee, address feeAddress, uint256 amount, uint256 dueDate, uint256 feeAmount, bytes paymentReference);
     event PayOutERC20Event(address tokenAddress, address payee, address feeAddress, uint256 amount, bytes paymentReference, uint256 feeAmount);
     event InterestPayoutEvent(address tokenAddress, address payee, uint256 interestAmount, bytes paymentReference);
-    event ContractParametersUpdatedEvent(uint16 feeModifier, uint256 minDueDateParameter, uint256 maxDueDateParameter, uint256 minAmount, uint256 maxAmount, uint8 maxPayoutArraySize);
+    event ContractParametersUpdatedEvent(uint16 contractFeeModifier, uint8 feeAmountMultiplier, uint256 minDueDateParameter, uint256 maxDueDateParameter, uint256 minAmount, uint256 maxAmount, uint8 maxPayoutArraySize);
     event setERC20FeeProxyEvent(address ERC20FeeProxyAddress);
 
     function getContractCometWrapperBalance() public view returns(uint256) {
@@ -158,6 +158,24 @@ contract PaytrTest is Test {
             block.timestamp + 10 days,
             amountToPay,
             0,
+            paymentReference1,
+            false
+        );
+        
+    }
+
+    function testFail_feeAmountTooHigh() public { //the feeAmount multiplier is specified in the contract parameters.
+
+        uint256 amountToPay = 100e6;
+        uint256 feeAmountToPay = amountToPay * 10;
+
+        vm.prank(alice);
+        Paytr_Test.payInvoiceERC20(
+            bob,
+            dummyFeeAddress,
+            block.timestamp + 10 days,
+            amountToPay,
+            feeAmountToPay,
             paymentReference1,
             false
         );
@@ -329,23 +347,13 @@ contract PaytrTest is Test {
         );
 
         vm.warp(block.timestamp + 21 days);
-
         payOutArray = [paymentReference1];
-
         Paytr_Test.payOutERC20Invoice(payOutArray);
 
-        console2.log("Mapping amount:",Paytr_Test.getMapping(paymentReference1).amount);
-        console2.log("Mapping feeAddress:",Paytr_Test.getMapping(paymentReference1).feeAddress);
-        console2.log("Mapping payee:",Paytr_Test.getMapping(paymentReference1).payee);
-
         vm.warp(block.timestamp + 150 days);
-
         payOutArray = [paymentReference1];
-
         Paytr_Test.payOutERC20Invoice(payOutArray);
 
     }
-
-
 
 }

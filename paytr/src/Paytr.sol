@@ -36,6 +36,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     error InvalidAmount();
+    error InvalidFeeAmount();
     error PaymentReferenceInUse();
     error NotAuthorized();
     error ZeroPayeeAddress();
@@ -46,7 +47,8 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
     error InvalidNewDueDate();
     error InvalidArrayLength();
     error ReferenceNotDue();
-    error InvalidFeeModifier();
+    error InvalidContractFeeModifier();
+    error InvalidFeeAmountMultiplier();
     error InvalidMinDueDate();
     error InvalidMaxDueDate();
     error InvalidMinAmount();
@@ -57,7 +59,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
     address immutable wrapperAddress;
     address immutable cometAddress;
     uint8 public maxPayoutArraySize;
-    uint16 public feeModifier;
+    uint16 public contractFeeModifier;
     uint256 public minDueDateParameter;
     uint256 public maxDueDateParameter;   
     uint256 public minAmountParameter;
@@ -74,11 +76,11 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         bool shouldPayoutViaRequestNetwork;
     }
 
-    constructor(address _cometAddress, address _wrapperAddress, uint16 _feeModifier, uint256 _minDueDateParameter, uint256 _maxDueDateParameter, uint256 _minAmountParameter, uint256 _maxAmountParameter, uint8 _maxPayoutArraySize) {
+    constructor(address _cometAddress, address _wrapperAddress, uint16 _contractFeeModifier, uint256 _minDueDateParameter, uint256 _maxDueDateParameter, uint256 _minAmountParameter, uint256 _maxAmountParameter, uint8 _maxPayoutArraySize) {
        cometAddress = _cometAddress;
        baseAsset = IComet(cometAddress).baseToken();
        wrapperAddress = _wrapperAddress;
-       feeModifier = _feeModifier;
+       contractFeeModifier = _contractFeeModifier;
        minDueDateParameter = _minDueDateParameter;	
        maxDueDateParameter = _maxDueDateParameter;
        minAmountParameter = _minAmountParameter;
@@ -90,7 +92,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
     event PaymentERC20Event(address tokenAddress, address payee, address feeAddress, uint256 amount, uint256 dueDate, uint256 feeAmount, bytes paymentReference);
     event PayOutERC20Event(address tokenAddress, address payee, address feeAddress, uint256 amount, bytes paymentReference, uint256 feeAmount);
     event InterestPayoutEvent(address tokenAddress, address payee, uint256 interestAmount, bytes paymentReference);
-    event ContractParametersUpdatedEvent(uint16 feeModifier, uint256 minDueDateParameter, uint256 maxDueDateParameter, uint256 minAmount, uint256 maxAmount, uint8 maxPayoutArraySize);
+    event ContractParametersUpdatedEvent(uint16 contractFeeModifier, uint256 minDueDateParameter, uint256 maxDueDateParameter, uint256 minAmount, uint256 maxAmount, uint8 maxPayoutArraySize);
     event setERC20FeeProxyEvent(address ERC20FeeProxyAddress);
 
     /// @notice paymentMapping keeps track of all the payments.
@@ -100,9 +102,9 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
     /// @notice This function can't be used while it's paused.
     /// @param _payee The receiver of the payment.
     /// @param _feeAddress When using an additional fee, this is the address that will receive the _feeAmount.
-    /// @param _dueDate The due date of the payment, or invoice, in epoch time.
-    /// @param _amount The _asset amount in wei.
-    /// @param _feeAmount The total _asset fee amount in wei.
+    /// @param _dueDate The due date of the paymentReference, or invoice, in epoch time.
+    /// @param _amount The baseAsset amount in wei.
+    /// @param _feeAmount The total baseAsset fee amount in wei.
     /// @param _paymentReference Reference of the related payment.
     /// @param _shouldPayoutViaRequestNetwork This bool determines whether or not the payout of the payment reference should run through the Request Network ERC20FeeProxy contract,
     /// to make sure the Request Network protocol can detect this payment.
@@ -127,14 +129,14 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             if(paymentERC20.amount != 0) revert PaymentReferenceInUse();
             if(paymentERC20.payee == _payee) revert PaymentReferenceInUse();
             if(_amount < minAmountParameter || _amount > maxAmountParameter) revert InvalidAmount();
-            if(_dueDate < block.timestamp + minDueDateParameter || _dueDate > block.timestamp + maxDueDateParameter) revert DueDateNotAllowed();            
+            if(_dueDate < block.timestamp + minDueDateParameter || _dueDate > block.timestamp + maxDueDateParameter) revert DueDateNotAllowed();
 
             IERC20(baseAsset).safeTransferFrom(msg.sender, address(this), totalAmount);
             IERC20(baseAsset).forceApprove(cometAddress, totalAmount);
-
-            uint256 cUsdcbalanceBeforeSupply = IERC20(cometAddress).balanceOf(address(this));
+            
+            uint256 cUsdcbalanceBeforeSupply = getContractCometBalance();
             IComet(cometAddress).supply(baseAsset, totalAmount);
-            uint256 cUsdcbalanceAfterSupply = IERC20(cometAddress).balanceOf(address(this));
+            uint256 cUsdcbalanceAfterSupply = getContractCometBalance();
             uint256 cUsdcAmountToWrap = cUsdcbalanceAfterSupply - cUsdcbalanceBeforeSupply;         
 
             uint256 wrappedShares = IWrapper(wrapperAddress).deposit(cUsdcAmountToWrap, address(this));
@@ -156,7 +158,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
     /**                                                                             
     * @notice Allows the contract to pay payee (principal amount), payer (interest amount) and fee receiver (fee amount).
     This function cannot be paused.
-    * @param payoutReferencesArray Insert the bytes array of references that need to be paid out.
+    * @param payoutReferencesArray Insert the bytes array of references that need to be paid out. Only due payment references can be used.
     * @dev Uses modifier nonReentrant.
     **/
     function payOutERC20Invoice(bytes[] calldata payoutReferencesArray) external nonReentrant {
@@ -178,24 +180,30 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             uint256 _wrapperSharesToRedeem = paymentMapping[_paymentReference].wrapperSharesReceived;
 
             paymentMapping[_paymentReference].amount = 0; //prevents double payout because of the require statement
-            //delete paymentMapping[_paymentReference];
 
             //redeem Wrapper shares and receive v3 cTokens
             IWrapper(wrapperAddress).redeem(_wrapperSharesToRedeem, address(this), address(this));
 
-            uint256 baseAssetBalanceBeforeCometWithdraw = IERC20(baseAsset).balanceOf(address(this));
+            uint256 baseAssetBalanceBeforeCometWithdraw = getContractBaseAssetBalance();
 
             //redeem all available v3 cTokens from Compound for baseAsset tokens
             uint256 cTokensToRedeem = IERC20(cometAddress).balanceOf(address(this));
             IComet(cometAddress).withdraw(baseAsset, cTokensToRedeem);
 
-            uint256 baseAssetBalanceAfterCometWithdraw = IERC20(baseAsset).balanceOf(address(this));
-
             //get new USDC balance
-            uint256 _totalInterestGathered = baseAssetBalanceAfterCometWithdraw - baseAssetBalanceBeforeCometWithdraw - _amount - _feeAmount;
-            uint256 _interestAmount = _totalInterestGathered * feeModifier / 10000;
+            uint256 baseAssetBalanceAfterCometWithdraw = getContractBaseAssetBalance();
 
-            if(paymentMapping[_paymentReference].shouldPayoutViaRequestNetwork) {
+            uint256 _totalInterestGathered = baseAssetBalanceAfterCometWithdraw - baseAssetBalanceBeforeCometWithdraw - _amount - _feeAmount;
+            uint256 _interestAmount = _totalInterestGathered * contractFeeModifier / 10000;
+
+            if(!paymentMapping[_paymentReference].shouldPayoutViaRequestNetwork) {
+
+                IERC20(baseAsset).safeTransfer(_payee, _amount);
+                if(_feeAmount != 0) {
+                        IERC20(baseAsset).safeTransfer(_feeAddress, _feeAmount);
+                }
+
+            } else {
 
                 IERC20FeeProxy(ERC20FeeProxyAddress).transferFromWithReferenceAndFee(
                         baseAsset,
@@ -205,12 +213,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
                         _feeAmount,
                         _feeAddress
                 );
-
-            } else {
-                IERC20(baseAsset).safeTransfer(_payee, _amount);
-                if(_feeAmount != 0) {
-                        IERC20(baseAsset).safeTransfer(_feeAddress, _feeAmount);
-                }
+                
             }
 
             IERC20(baseAsset).safeTransfer(_payer, _interestAmount);
@@ -224,6 +227,15 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
 
     }
 
+    function getContractCometBalance() internal view returns(uint256) {
+        uint256 contractCometBalance = IERC20(cometAddress).balanceOf(address(this));
+        return contractCometBalance;
+    }
+
+    function getContractBaseAssetBalance() internal view returns(uint256) {
+        uint256 contractBaseAssetBalance = IERC20(baseAsset).balanceOf(address(this));
+        return contractBaseAssetBalance;
+    }
     function claimCompRewards() external onlyOwner {
         IWrapper(wrapperAddress).claimTo(owner());
     }
@@ -232,20 +244,20 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         IERC20(baseAsset).safeTransfer(owner(), IERC20(baseAsset).balanceOf(address(this)));
     }
 
-    function setContractParameters(uint16 _feeModifier, uint256 _minDueDateParameter, uint256 _maxDueDateParameter, uint256 _minAmountParameter, uint256 _maxAmountParameter, uint8 _maxPayoutArraySize) external onlyOwner {
-        if(_feeModifier < 5000 || _feeModifier > 10000 ) revert InvalidFeeModifier();
+    function setContractParameters(uint16 _contractFeeModifier, uint256 _minDueDateParameter, uint256 _maxDueDateParameter, uint256 _minAmountParameter, uint256 _maxAmountParameter, uint8 _maxPayoutArraySize) external onlyOwner {
+        if(_contractFeeModifier < 5000 || _contractFeeModifier > 10000 ) revert InvalidContractFeeModifier();
         if(_minDueDateParameter < 5 days) revert InvalidMinDueDate();
         if(_maxDueDateParameter > 365 days) revert InvalidMaxDueDate();
         if(_minAmountParameter < 1) revert InvalidMinAmount();
         if(_maxPayoutArraySize == 0) revert InvalidMaxArraySize();
-        feeModifier = _feeModifier;
+        contractFeeModifier = _contractFeeModifier;
         minDueDateParameter = _minDueDateParameter;
         maxDueDateParameter = _maxDueDateParameter;
         minAmountParameter = _minAmountParameter;
         maxAmountParameter = _maxAmountParameter;
         maxPayoutArraySize = _maxPayoutArraySize;
 
-        emit ContractParametersUpdatedEvent(feeModifier, minDueDateParameter, maxDueDateParameter, minAmountParameter, maxAmountParameter, maxPayoutArraySize);
+        emit ContractParametersUpdatedEvent(contractFeeModifier, minDueDateParameter, maxDueDateParameter, minAmountParameter, maxAmountParameter, maxPayoutArraySize);
     }
 
     function setERC20FeeProxy(address _ERC20FeeProxyAddress) external onlyOwner {
