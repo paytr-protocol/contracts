@@ -51,7 +51,7 @@ contract PaytrTest is Test {
     event PaymentERC20Event(address tokenAddress, address payee, address feeAddress, uint256 amount, uint256 dueDate, uint256 feeAmount, bytes paymentReference);
     event PayOutERC20Event(address tokenAddress, address payee, address feeAddress, uint256 amount, bytes paymentReference, uint256 feeAmount);
     event InterestPayoutEvent(address tokenAddress, address payee, uint256 interestAmount, bytes paymentReference);
-    event ContractParametersUpdatedEvent(uint16 contractFeeModifier, uint8 feeAmountMultiplier, uint256 minDueDateParameter, uint256 maxDueDateParameter, uint256 minAmount, uint256 maxAmount, uint8 maxPayoutArraySize);
+    event ContractParametersUpdatedEvent(uint16 contractFeeModifier, uint256 minDueDateParameter, uint256 maxDueDateParameter, uint256 minAmount, uint256 maxAmount, uint8 maxPayoutArraySize);
     event setERC20FeeProxyEvent(address ERC20FeeProxyAddress);
 
     function getContractCometWrapperBalance() public view returns(uint256) {
@@ -158,24 +158,6 @@ contract PaytrTest is Test {
             block.timestamp + 10 days,
             amountToPay,
             0,
-            paymentReference1,
-            false
-        );
-        
-    }
-
-    function testFail_feeAmountTooHigh() public { //the feeAmount multiplier is specified in the contract parameters.
-
-        uint256 amountToPay = 100e6;
-        uint256 feeAmountToPay = amountToPay * 10;
-
-        vm.prank(alice);
-        Paytr_Test.payInvoiceERC20(
-            bob,
-            dummyFeeAddress,
-            block.timestamp + 10 days,
-            amountToPay,
-            feeAmountToPay,
             paymentReference1,
             false
         );
@@ -354,6 +336,80 @@ contract PaytrTest is Test {
         payOutArray = [paymentReference1];
         Paytr_Test.payOutERC20Invoice(payOutArray);
 
+    }
+
+    function testFail_changeParametersNotOwner() public {
+        vm.prank(alice);
+        Paytr_Test.setContractParameters(
+            8000,
+            20 days,
+            365 days,
+            100e6,
+            1000000e6,
+            60
+        );
+    }
+
+    function testFail_changeParametersInvalidContractFeeModifier() public {
+        vm.prank(owner);
+        Paytr_Test.setContractParameters(
+            1,
+            20 days,
+            365 days,
+            100e6,
+            1000000e6,
+            60
+        );
+    }
+
+    function testFail_changeParametersInvalidMinDueDate() public {
+        vm.prank(owner);
+        Paytr_Test.setContractParameters(
+            8000,
+            1 days,
+            365 days,
+            100e6,
+            1000000e6,
+            60
+        );
+    }
+
+    function testFail_changeParametersInvalidMaxDueDate() public {
+        vm.prank(owner);
+        Paytr_Test.setContractParameters(
+            8000,
+            20 days,
+            5000 days,
+            100e6,
+            1000000e6,
+            60
+        );
+    }
+
+    function testFail_changeParametersInvalidMinAmount() public {
+        vm.prank(owner);
+        Paytr_Test.setContractParameters(
+            8000,
+            20 days,
+            365 days,
+            0,
+            1000000e6,
+            60
+        );
+    }
+
+    //Paytr.sol doesn't check the maxAmount parameter, no test needed
+
+    function testFail_changeParametersInvalidMaxPayOutArraySize() public {
+        vm.prank(owner);
+        Paytr_Test.setContractParameters(
+            8000,
+            20 days,
+            365 days,
+            100e6,
+            1000000e6,
+            0
+        );
     }
 
 }
