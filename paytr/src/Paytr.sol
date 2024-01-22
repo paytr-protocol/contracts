@@ -200,18 +200,18 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
 
                 IERC20(baseAsset).safeTransfer(_payee, _amount);
                 if(_feeAmount != 0) {
-                        IERC20(baseAsset).safeTransfer(_feeAddress, _feeAmount);
+                    IERC20(baseAsset).safeTransfer(_feeAddress, _feeAmount);
                 }
 
             } else {
 
                 IERC20FeeProxy(ERC20FeeProxyAddress).transferFromWithReferenceAndFee(
-                        baseAsset,
-                        _payee,
-                        _amount,
-                        _paymentReference,
-                        _feeAmount,
-                        _feeAddress
+                    baseAsset,
+                    _payee,
+                    _amount,
+                    _paymentReference,
+                    _feeAmount,
+                    _feeAddress
                 );
                 
             }
@@ -236,6 +236,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         uint256 contractBaseAssetBalance = IERC20(baseAsset).balanceOf(address(this));
         return contractBaseAssetBalance;
     }
+    
     function claimCompRewards() external onlyOwner {
         IWrapper(wrapperAddress).claimTo(owner());
     }
