@@ -169,17 +169,18 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
 
         for (uint256 i; i < payoutReferencesArrayLength;) {
             bytes memory _paymentReference = payoutReferencesArray[i];
-            if(paymentMapping[_paymentReference].amount == 0) revert NoPrePayment();
-            if(paymentMapping[_paymentReference].dueDate > block.timestamp) revert ReferenceNotDue();
+            PaymentERC20 memory paymentERC20 = paymentMapping[_paymentReference];
+            if(paymentERC20.amount == 0) revert NoPrePayment();
+            if(paymentERC20.dueDate > block.timestamp) revert ReferenceNotDue();
 
-            address _payee = paymentMapping[_paymentReference].payee;
-            address _payer = paymentMapping[_paymentReference].payer;
-            address _feeAddress = paymentMapping[_paymentReference].feeAddress;
-            uint256 _amount = paymentMapping[_paymentReference].amount;
-            uint256 _feeAmount = paymentMapping[_paymentReference].feeAmount;
-            uint256 _wrapperSharesToRedeem = paymentMapping[_paymentReference].wrapperSharesReceived;
+            address _payee = paymentERC20.payee;
+            address _payer = paymentERC20.payer;
+            address _feeAddress = paymentERC20.feeAddress;
+            uint256 _amount = paymentERC20.amount;
+            uint256 _feeAmount = paymentERC20.feeAmount;
+            uint256 _wrapperSharesToRedeem = paymentERC20.wrapperSharesReceived;
             
-            delete paymentMapping[_paymentReference];
+            delete paymentMapping[payoutReferencesArray[i]];
 
             //redeem Wrapper shares and receive v3 cTokens
             IWrapper(wrapperAddress).redeem(_wrapperSharesToRedeem, address(this), address(this));
@@ -196,15 +197,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             uint256 _totalInterestGathered = baseAssetBalanceAfterCometWithdraw - baseAssetBalanceBeforeCometWithdraw - _amount - _feeAmount;
             uint256 _interestAmount = _totalInterestGathered * contractFeeModifier / 10000;
 
-            if(!paymentMapping[_paymentReference].shouldPayoutViaRequestNetwork) {
-
-                IERC20(baseAsset).safeTransfer(_payee, _amount);
-                if(_feeAmount != 0) {
-                    IERC20(baseAsset).safeTransfer(_feeAddress, _feeAmount);
-                }
-
-            } else {
-
+            if(paymentERC20.shouldPayoutViaRequestNetwork == true) {
                 IERC20FeeProxy(ERC20FeeProxyAddress).transferFromWithReferenceAndFee(
                     baseAsset,
                     _payee,
@@ -212,7 +205,14 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
                     _paymentReference,
                     _feeAmount,
                     _feeAddress
-                );
+                );                
+
+            } else {
+                
+                IERC20(baseAsset).safeTransfer(_payee, _amount);
+                if(_feeAmount != 0) {
+                    IERC20(baseAsset).safeTransfer(_feeAddress, _feeAmount);
+                }
                 
             }
 

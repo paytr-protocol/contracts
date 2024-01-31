@@ -35,7 +35,7 @@ contract PaytrTest is Test {
     bytes paymentReference2 = "0x494e56332d32343002";
     bytes paymentReference3 = "0x494e56332d32343003";
 
-    bytes[] public payOutArray;
+    bytes[] payOutArray;
 
     event PaymentERC20Event(address tokenAddress, address payee, address feeAddress, uint256 amount, uint40 dueDate, uint256 feeAmount, bytes paymentReference);
     event PayOutERC20Event(address tokenAddress, address payee, address feeAddress, uint256 amount, bytes paymentReference, uint256 feeAmount);
@@ -137,7 +137,7 @@ contract PaytrTest is Test {
             amountToPay,
             0,
             paymentReference1,
-            true
+            false
         );
         
         //baseAsset balances
@@ -175,7 +175,7 @@ contract PaytrTest is Test {
             amountToPay,
             10000,
             paymentReference1,
-            true
+            false
         );
         
         //baseAsset balances
@@ -273,7 +273,20 @@ contract PaytrTest is Test {
 
     function test_payAndRedeemSingleZeroFee() public {
         assert(baseAsset.allowance(alice, address(Paytr_Test)) > 1000e6);
-        test_payInvoiceERC20SingleZeroFee();
+        vm.expectEmit(address(Paytr_Test));        
+
+        emit PaymentERC20Event(baseAssetAddress, bob, dummyFeeAddress, amountToPay, uint40(block.timestamp + 10 days), 0, paymentReference1);
+
+        vm.prank(alice);
+        Paytr_Test.payInvoiceERC20(
+            bob,
+            dummyFeeAddress,
+            uint40(block.timestamp + 10 days),
+            amountToPay,
+            0,
+            paymentReference1,
+            true
+        );
 
         uint256 aliceBAseAssetBalanceBeforePayOut = getAlicesBaseAssetBalance();
         payOutArray = [paymentReference1];
