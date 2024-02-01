@@ -34,6 +34,19 @@ contract PaytrTest is Test {
     bytes paymentReference1 = "0x494e56332d32343001";
     bytes paymentReference2 = "0x494e56332d32343002";
     bytes paymentReference3 = "0x494e56332d32343003";
+    bytes paymentReference4 = "0x494e56332d32343004";
+    bytes paymentReference5 = "0x494e56332d32343005";
+    bytes paymentReference6 = "0x494e56332d32343006";
+    bytes paymentReference7 = "0x494e56332d32343007";
+    bytes paymentReference8 = "0x494e56332d32343008";
+    bytes paymentReference9 = "0x494e56332d32343009";
+    bytes paymentReference10 = "0x494e56332d32343010";
+    bytes paymentReference11 = "0x494e56332d32343011";
+    bytes paymentReference12 = "0x494e56332d32343012";
+    bytes paymentReference13 = "0x494e56332d32343013";
+    bytes paymentReference14 = "0x494e56332d32343014";
+    bytes paymentReference15 = "0x494e56332d32343015";
+    bytes paymentReference16 = "0x494e56332d32343016";
 
     bytes[] payOutArray;
 
@@ -335,6 +348,65 @@ contract PaytrTest is Test {
         //cometWrapper (wcbaseAssetv3) balances
         assertEq(getContractCometWrapperBalance(), 0);
 
+    }
+
+    function test_payFiveReferencesAndPayOutNoFee() public {
+        vm.startPrank(alice);
+        Paytr_Test.payInvoiceERC20(
+            bob,
+            dummyFeeAddress,
+            uint40(block.timestamp + 10 days),
+            amountToPay,
+            0,
+            paymentReference1,
+            false
+        );
+
+        Paytr_Test.payInvoiceERC20(
+            bob,
+            dummyFeeAddress,
+            uint40(block.timestamp + 10 days),
+            amountToPay,
+            0,
+            paymentReference2,
+            false
+        );
+
+        Paytr_Test.payInvoiceERC20(
+            bob,
+            dummyFeeAddress,
+            uint40(block.timestamp + 10 days),
+            amountToPay,
+            0,
+            paymentReference3,
+            false
+        );
+
+        Paytr_Test.payInvoiceERC20(
+            bob,
+            dummyFeeAddress,
+            uint40(block.timestamp + 10 days),
+            amountToPay,
+            0,
+            paymentReference4,
+            false
+        );
+
+        Paytr_Test.payInvoiceERC20(
+            bob,
+            dummyFeeAddress,
+            uint40(block.timestamp + 10 days),
+            amountToPay,
+            0,
+            paymentReference5,
+            false
+        );
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 30 days);
+
+        payOutArray = [paymentReference1, paymentReference2, paymentReference3, paymentReference4, paymentReference5];
+        Paytr_Test.payOutERC20Invoice(payOutArray);
     }
 
     function test_payAndRedeemSingleWithFee() public {
