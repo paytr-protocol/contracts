@@ -73,7 +73,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         address payer;
         address payee;
         address feeAddress;
-        bool shouldPayoutViaRequestNetwork;
+        uint8 shouldPayoutViaRequestNetwork;
     }
 
     constructor(address _cometAddress, address _wrapperAddress, uint16 _contractFeeModifier, uint256 _minDueDateParameter, uint256 _maxDueDateParameter, uint256 _minTotalAmountParameter, uint8 _maxPayoutArraySize) {
@@ -119,7 +119,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         uint256 _amount,
         uint256 _feeAmount,
         bytes calldata _paymentReference,
-        bool _shouldPayoutViaRequestNetwork
+        uint8 _shouldPayoutViaRequestNetwork
         ) public nonReentrant whenNotPaused {
 
             PaymentERC20 storage paymentERC20 = paymentMapping[_paymentReference];
@@ -169,9 +169,10 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         
         for (uint256 i; i < payoutReferencesArrayLength;) {
             bytes memory _paymentReference = payoutReferencesArray[i];
-            PaymentERC20 memory paymentERC20 = paymentMapping[_paymentReference];
+            PaymentERC20 storage paymentERC20 = paymentMapping[_paymentReference];
             if(paymentERC20.amount == 0) revert NoPrePayment();
             if(paymentERC20.dueDate > block.timestamp) revert ReferenceNotDue();
+            uint8 RNPayment = paymentERC20.shouldPayoutViaRequestNetwork;
 
             address _payee = paymentERC20.payee;
             address _payer = paymentERC20.payer;
@@ -197,7 +198,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             uint256 _totalInterestGathered = baseAssetBalanceAfterCometWithdraw - baseAssetBalanceBeforeCometWithdraw - _amount - _feeAmount;
             uint256 _interestAmount = _totalInterestGathered * contractFeeModifier / 10000;
 
-            if(paymentERC20.shouldPayoutViaRequestNetwork == true) {
+            if(RNPayment != 0) {
                 IERC20FeeProxy(ERC20FeeProxyAddress).transferFromWithReferenceAndFee(
                     baseAsset,
                     _payee,

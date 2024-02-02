@@ -124,7 +124,7 @@ contract PaytrTest is Test {
             amountToPay,
             0,
             paymentReference1,
-            false
+            0
         );
 
     }
@@ -141,7 +141,7 @@ contract PaytrTest is Test {
             amountToPay,
             0,
             paymentReference1,
-            false
+            0
         );
         
     }
@@ -158,7 +158,7 @@ contract PaytrTest is Test {
             amountToPay,
             0,
             paymentReference1,
-            false
+            0
         );
         
     }
@@ -175,7 +175,7 @@ contract PaytrTest is Test {
             amountToPay,
             0,
             paymentReference1,
-            false
+            0
         );
         
     }
@@ -192,7 +192,7 @@ contract PaytrTest is Test {
             amountToPay,
             0,
             paymentReference1,
-            false
+            0
         );
         
     }
@@ -209,7 +209,7 @@ contract PaytrTest is Test {
             amountToPay,
             0,
             paymentReference1,
-            false
+            0
         );
 
         vm.prank(bob);
@@ -220,7 +220,7 @@ contract PaytrTest is Test {
             amountToPay,
             0,
             paymentReference1,
-            false
+            0
         );
         
     }
@@ -237,7 +237,7 @@ contract PaytrTest is Test {
             amountToPay,
             0,
             paymentReference1,
-            false
+            0
         );
         
     }
@@ -254,7 +254,7 @@ contract PaytrTest is Test {
             amountToPay,
             0,
             paymentReference1,
-            false
+            0
         );
         
     }
@@ -302,7 +302,7 @@ contract PaytrTest is Test {
             amountToPay,
             0,
             paymentReference1,
-            false
+            0
         );
 
         vm.warp(block.timestamp + 15 days);
@@ -324,7 +324,7 @@ contract PaytrTest is Test {
             amountToPay,
             0,
             paymentReference1,
-            false
+            0
         );
 
         vm.warp(block.timestamp + 21 days);

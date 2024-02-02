@@ -136,7 +136,7 @@ contract PaytrTest is Test {
             _amount,
             0,
             paymentReference1,
-            true
+            1
         );
         
         //baseAsset balances
@@ -177,7 +177,7 @@ contract PaytrTest is Test {
             _amount,
             _feeAmount,
             paymentReference1,
-            true
+            1
         );
         
         //baseAsset balances
@@ -219,7 +219,7 @@ contract PaytrTest is Test {
             _amount,
             _feeAmount,
             paymentReference1,
-            true
+            1
         );
         vm.stopPrank();
 
@@ -252,7 +252,7 @@ contract PaytrTest is Test {
             _amount,
             _feeAmount,
             paymentReference2,
-            false       
+            0       
         );
         vm.stopPrank();
 
@@ -291,7 +291,7 @@ contract PaytrTest is Test {
             _amount,
             0,
             paymentReference1,
-            true
+            1
         );
 
         uint256 aliceBAseAssetBalanceBeforePayOut = getAlicesBaseAssetBalance();
@@ -359,7 +359,7 @@ contract PaytrTest is Test {
             _amount,
             _feeAmount,
             paymentReference1,
-            true
+            1
         );
 
         uint256 aliceBaseAssetBalanceBeforePayOut = getAlicesBaseAssetBalance();
@@ -444,7 +444,7 @@ contract PaytrTest is Test {
             _amount,
             0,
             paymentReference1,
-            false
+            0
         );
         vm.stopPrank();
 
@@ -459,7 +459,7 @@ contract PaytrTest is Test {
             _amount,
             0,
             paymentReference2,
-            true
+            1
         );
         vm.stopPrank();
 
@@ -474,7 +474,7 @@ contract PaytrTest is Test {
             _amount,
             0,
             paymentReference3,
-            false
+            0
         );
         vm.stopPrank();
 
@@ -571,7 +571,7 @@ contract PaytrTest is Test {
             _amount,
             0,
             paymentReference1,
-            false
+            0
         );
 
         vm.warp(block.timestamp + 25 days);
@@ -602,7 +602,7 @@ contract PaytrTest is Test {
             10e6,
             0,
             paymentReference1,
-            false
+            0
         );
 
     }
@@ -627,7 +627,7 @@ contract PaytrTest is Test {
             _amount,
             _feeAmount,
             paymentReference3,
-            true
+            1
         );
 
         vm.warp(block.timestamp + 29 days);
