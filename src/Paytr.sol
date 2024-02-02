@@ -166,7 +166,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         uint256 payoutReferencesArrayLength = payoutReferencesArray.length;
 
         if(payoutReferencesArrayLength == 0 || payoutReferencesArrayLength > maxPayoutArraySize) revert InvalidArrayLength();
-
+        
         for (uint256 i; i < payoutReferencesArrayLength;) {
             bytes memory _paymentReference = payoutReferencesArray[i];
             PaymentERC20 memory paymentERC20 = paymentMapping[_paymentReference];

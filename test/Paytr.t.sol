@@ -409,6 +409,115 @@ contract PaytrTest is Test {
         Paytr_Test.payOutERC20Invoice(payOutArray);
     }
 
+    function test_payTenReferencesAndPayOutNoFee() public {
+        vm.startPrank(alice);
+        Paytr_Test.payInvoiceERC20(
+            bob,
+            dummyFeeAddress,
+            uint40(block.timestamp + 10 days),
+            amountToPay,
+            0,
+            paymentReference1,
+            false
+        );
+
+        Paytr_Test.payInvoiceERC20(
+            bob,
+            dummyFeeAddress,
+            uint40(block.timestamp + 10 days),
+            amountToPay,
+            0,
+            paymentReference2,
+            false
+        );
+
+        Paytr_Test.payInvoiceERC20(
+            bob,
+            dummyFeeAddress,
+            uint40(block.timestamp + 10 days),
+            amountToPay,
+            0,
+            paymentReference3,
+            false
+        );
+
+        Paytr_Test.payInvoiceERC20(
+            bob,
+            dummyFeeAddress,
+            uint40(block.timestamp + 10 days),
+            amountToPay,
+            0,
+            paymentReference4,
+            false
+        );
+
+        Paytr_Test.payInvoiceERC20(
+            bob,
+            dummyFeeAddress,
+            uint40(block.timestamp + 10 days),
+            amountToPay,
+            0,
+            paymentReference5,
+            false
+        );
+
+        Paytr_Test.payInvoiceERC20(
+            bob,
+            dummyFeeAddress,
+            uint40(block.timestamp + 10 days),
+            amountToPay,
+            0,
+            paymentReference6,
+            false
+        );
+
+        Paytr_Test.payInvoiceERC20(
+            bob,
+            dummyFeeAddress,
+            uint40(block.timestamp + 10 days),
+            amountToPay,
+            0,
+            paymentReference7,
+            false
+        );
+
+        Paytr_Test.payInvoiceERC20(
+            bob,
+            dummyFeeAddress,
+            uint40(block.timestamp + 10 days),
+            amountToPay,
+            0,
+            paymentReference8,
+            false
+        );
+
+        Paytr_Test.payInvoiceERC20(
+            bob,
+            dummyFeeAddress,
+            uint40(block.timestamp + 10 days),
+            amountToPay,
+            0,
+            paymentReference9,
+            false
+        );
+
+        Paytr_Test.payInvoiceERC20(
+            bob,
+            dummyFeeAddress,
+            uint40(block.timestamp + 10 days),
+            amountToPay,
+            0,
+            paymentReference10,
+            false
+        );
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 30 days);
+
+        payOutArray = [paymentReference1, paymentReference2, paymentReference3, paymentReference4, paymentReference5, paymentReference6, paymentReference7, paymentReference8, paymentReference9, paymentReference10];
+        Paytr_Test.payOutERC20Invoice(payOutArray);
+    }
+
     function test_payAndRedeemSingleWithFee() public {
         assert(baseAsset.allowance(alice, address(Paytr_Test)) > 1000e6);
         test_payInvoiceERC20SingleWithFee();
