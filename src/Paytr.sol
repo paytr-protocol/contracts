@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+pragma solidity 0.8.22;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -248,7 +248,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
 
     function setContractParameters(uint16 _contractFeeModifier, uint256 _minDueDateParameter, uint256 _maxDueDateParameter, uint256 _minTotalAmountParameter, uint8 _maxPayoutArraySize) external onlyOwner {
         if(_contractFeeModifier < 5000 || _contractFeeModifier > 10000 ) revert InvalidContractFeeModifier();
-        if(_minDueDateParameter < 5 days) revert InvalidMinDueDate();
+        //if(_minDueDateParameter < 5 days) revert InvalidMinDueDate();
         if(_maxDueDateParameter > 365 days) revert InvalidMaxDueDate();
         if(_minTotalAmountParameter < 1) revert InvalidMinAmount();
         if(_maxPayoutArraySize == 0) revert InvalidMaxArraySize();

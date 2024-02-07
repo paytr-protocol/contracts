@@ -2,6 +2,7 @@
 src = "src"
 out = "out"
 libs = ["lib"]
+evm_version = "paris"
 
 remappings = [
     "@openzeppelin/=lib/openzeppelin-contracts/"
@@ -9,5 +10,8 @@ remappings = [
 
 [fuzz]
 runs = 100
+
+[etherscan]
+mumbai = { key = "${POLYGONSCAN_API_KEY}" }
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
