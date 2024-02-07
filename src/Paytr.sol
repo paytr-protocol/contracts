@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.22;
+pragma solidity 0.8.24;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -106,11 +106,12 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
     /// @param _amount The baseAsset amount in wei.
     /// @param _feeAmount The total baseAsset fee amount in wei.
     /// @param _paymentReference Reference of the related payment.
-    /// @param _shouldPayoutViaRequestNetwork This bool determines whether or not the payout of the payment reference should run through the Request Network ERC20FeeProxy contract,
-    /// to make sure the Request Network protocol can detect this payment.
+    /// @param _shouldPayoutViaRequestNetwork This number determines whether or not the payout of the payment reference should run through the Request Network ERC20FeeProxy contract,
+    /// to make sure the Request Network protocol can detect this payment. Use 1 if you want to route the payout through Request Network or use 0 if you don't want this.
     /// @dev Uses modifiers nonReentrant and whenNotPaused.
     /// @dev The parameter _dueDate needs to be inserted in epoch time.
     /// @dev The sum of _amount and _feeAmount needs to be greater than the minTotalAmountParameter.
+    /// @dev The parameter _shouldPayoutViaRequestNetwork is a uint8. Use 1-255 if you need the payout to go through the Request Network contract, use 0 if you don't need this.
 
     function payInvoiceERC20(
         address _payee,
@@ -155,19 +156,18 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         emit PaymentERC20Event(baseAsset, _payee, _feeAddress, _amount, _dueDate, _feeAmount, _paymentReference);         
     }
 
-    /**                                                                             
-    * @notice Allows the contract to pay payee (principal amount), payer (interest amount) and fee receiver (fee amount).
-    This function cannot be paused.
-    * @param payoutReferencesArray Insert the bytes array of references that need to be paid out. Only due payment references can be used.
-    * @dev Uses modifier nonReentrant.
-    **/
+                                                                                
+    /// @notice Allows the contract to pay payee (principal amount), payer (interest amount) and fee receiver (fee amount).
+    /// This function cannot be paused.
+    /// @param payoutReferencesArray Insert the bytes array of references that need to be paid out. Only due payment references can be used.
+    /// @dev Uses modifier nonReentrant.
     function payOutERC20Invoice(bytes[] calldata payoutReferencesArray) external nonReentrant {
 
         uint256 payoutReferencesArrayLength = payoutReferencesArray.length;
 
         if(payoutReferencesArrayLength == 0 || payoutReferencesArrayLength > maxPayoutArraySize) revert InvalidArrayLength();
         
-        for (uint256 i; i < payoutReferencesArrayLength;) {
+        for (uint256 i; i < payoutReferencesArrayLength; i++) {
             bytes memory _paymentReference = payoutReferencesArray[i];
             PaymentERC20 storage paymentERC20 = paymentMapping[_paymentReference];
             if(paymentERC20.amount == 0) revert NoPrePayment();
@@ -217,10 +217,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
                 
             }
 
-            IERC20(baseAsset).safeTransfer(_payer, _interestAmount);
-            unchecked {
-                ++i;
-            }            
+            IERC20(baseAsset).safeTransfer(_payer, _interestAmount);          
 
             emit PayOutERC20Event(baseAsset, _payee, _feeAddress, _amount, _paymentReference, _feeAmount);
             emit InterestPayoutEvent(baseAsset, _payer, _interestAmount, _paymentReference);
@@ -248,7 +245,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
 
     function setContractParameters(uint16 _contractFeeModifier, uint256 _minDueDateParameter, uint256 _maxDueDateParameter, uint256 _minTotalAmountParameter, uint8 _maxPayoutArraySize) external onlyOwner {
         if(_contractFeeModifier < 5000 || _contractFeeModifier > 10000 ) revert InvalidContractFeeModifier();
-        //if(_minDueDateParameter < 5 days) revert InvalidMinDueDate();
+        if(_minDueDateParameter < 5 days) revert InvalidMinDueDate();
         if(_maxDueDateParameter > 365 days) revert InvalidMaxDueDate();
         if(_minTotalAmountParameter < 1) revert InvalidMinAmount();
         if(_maxPayoutArraySize == 0) revert InvalidMaxArraySize();
@@ -264,6 +261,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
     function setERC20FeeProxy(address _ERC20FeeProxyAddress) external onlyOwner {
         ERC20FeeProxyAddress = _ERC20FeeProxyAddress;
         IERC20(baseAsset).forceApprove(ERC20FeeProxyAddress, 2**256 - 1);
+
         emit setERC20FeeProxyEvent(ERC20FeeProxyAddress);
     }
 
