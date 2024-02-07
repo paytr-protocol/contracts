@@ -836,38 +836,38 @@ contract PaytrTest is Test {
         vm.stopPrank();
     }
 
-    // function test_sendBaseAssetBalance() public {
-    //     uint256 contractBaseAssetBalanceBeforePayOut = getContractBaseAssetBalance();
+    function test_sendBaseAssetBalance() public {
+        uint256 contractBaseAssetBalanceBeforePayOut = getContractBaseAssetBalance();
 
-    //     test_payThreePayOutTwo();
+        test_payThreePayOutTwo();
 
-    //     vm.prank(owner);
-    //     Paytr_Test.claimBaseAssetBalance();
+        vm.prank(owner);
+        Paytr_Test.claimBaseAssetBalance();
 
-    //     assertGe(baseAsset.balanceOf(owner), 0);
-    //     assertLe(getContractBaseAssetBalance(), contractBaseAssetBalanceBeforePayOut); //feeModifier can be 10000 (no fee applied), so contract base asset balance won't change
-    // }
+        assertGe(baseAsset.balanceOf(owner), 0);
+        assertLe(getContractBaseAssetBalance(), contractBaseAssetBalanceBeforePayOut); //feeModifier can be 10000 (no fee applied), so contract base asset balance won't change
+    }
 
-    // function test_setContractParameters() public {
-    //     vm.expectEmit(address(Paytr_Test));
-    //     emit ContractParametersUpdatedEvent(6000, 18 days, 365 days, 100e6, 25);
+    function test_setContractParameters() public {
+        vm.expectEmit(address(Paytr_Test));
+        emit ContractParametersUpdatedEvent(6000, 18 days, 365 days, 100e6, 25);
 
-    //     vm.prank(owner);
-    //     Paytr_Test.setContractParameters(6000, 18 days, 365 days, 100e6, 25);
+        vm.prank(owner);
+        Paytr_Test.setContractParameters(6000, 18 days, 365 days, 100e6, 25);
 
-    // }
+    }
 
-    // function test_setERC20FeeProxy() public {
-    //     vm.expectEmit(address(Paytr_Test));
-    //     emit setERC20FeeProxyEvent(address(0x131eb294E3803F23dc2882AB795631A12D1d8929));
-    //     Paytr_Test.setERC20FeeProxy(address(0x131eb294E3803F23dc2882AB795631A12D1d8929));
+    function test_setERC20FeeProxy() public {
+        vm.expectEmit(address(Paytr_Test));
+        emit setERC20FeeProxyEvent(address(0x131eb294E3803F23dc2882AB795631A12D1d8929));
+        Paytr_Test.setERC20FeeProxy(address(0x131eb294E3803F23dc2882AB795631A12D1d8929));
 
-    // }
+    }
 
-    // function test_pauseAndUnpause() public {
-    //     vm.startPrank(owner);
-    //     Paytr_Test.pause();
-    //     Paytr_Test.unpause();
-    // }
+    function test_pauseAndUnpause() public {
+        vm.startPrank(owner);
+        Paytr_Test.pause();
+        Paytr_Test.unpause();
+    }
 
 }
