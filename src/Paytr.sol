@@ -54,6 +54,8 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
     error InvalidMaxDueDate();
     error InvalidMinAmount();
     error InvalidMaxArraySize();
+    error NotPayer();
+    error referenceNotInEscrow();
 
     address immutable public baseAsset;
     address public ERC20FeeProxyAddress;
@@ -154,6 +156,56 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             );  
 
         emit PaymentERC20Event(baseAsset, _payee, _feeAddress, _amount, _dueDate, _feeAmount, _paymentReference);         
+    }
+
+    function payInvoiceERC20Escrow(
+        address _payee,
+        address _feeAddress,
+        uint256 _amount,
+        uint256 _feeAmount,
+        bytes calldata _paymentReference,
+        uint8 _shouldPayoutViaRequestNetwork
+        ) public nonReentrant whenNotPaused {
+
+            PaymentERC20 storage paymentERC20 = paymentMapping[_paymentReference];
+            uint256 totalAmount = _amount + _feeAmount;
+
+            if(_payee == address(0)) revert ZeroPayeeAddress();
+            if(_feeAddress == address(0)) revert ZeroFeeAddress();
+            if(paymentERC20.amount != 0) revert PaymentReferenceInUse();
+            if(totalAmount < minTotalAmountParameter) revert InvalidTotalAmount();
+
+            IERC20(baseAsset).safeTransferFrom(msg.sender, address(this), totalAmount);
+            
+            uint256 cUsdcbalanceBeforeSupply = getContractCometBalance();
+            IComet(cometAddress).supply(baseAsset, totalAmount);
+            uint256 cUsdcbalanceAfterSupply = getContractCometBalance();
+            uint256 cUsdcAmountToWrap = cUsdcbalanceAfterSupply - cUsdcbalanceBeforeSupply;         
+
+            uint256 wrappedShares = IWrapper(wrapperAddress).deposit(cUsdcAmountToWrap, address(this));
+
+            paymentMapping[_paymentReference] = PaymentERC20(
+                _amount,
+                _feeAmount,
+                wrappedShares,
+                0,
+                msg.sender,
+                _payee,
+                _feeAddress,
+                _shouldPayoutViaRequestNetwork
+            );  
+
+        emit PaymentERC20Event(baseAsset, _payee, _feeAddress, _amount, 0, _feeAmount, _paymentReference);         
+    }
+
+    function releaseEscrowPayment(bytes calldata _paymentReference) external {
+        PaymentERC20 storage paymentERC20 = paymentMapping[_paymentReference];
+        
+        if(msg.sender != paymentERC20.payer) revert NotPayer();
+        if(paymentERC20.dueDate != 0) revert referenceNotInEscrow();
+        if(paymentERC20.amount == 0) revert NoPrePayment();
+
+        paymentERC20.dueDate = uint40(block.timestamp + 120 seconds);
     }
 
                                                                                 
