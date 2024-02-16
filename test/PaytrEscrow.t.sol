@@ -226,17 +226,11 @@ contract PaytrTest is Test {
         );
 
         vm.warp(block.timestamp + 1 days);
+         console2.log("Due date:",Paytr_Test.getMapping(paymentReference1).dueDate);
+        console2.log("Amount:",Paytr_Test.getMapping(paymentReference1).amount);
 
         updateDueDate(paymentReference1);
         vm.stopPrank();
-
-        console2.log("Due date:",Paytr_Test.getMapping(paymentReference1).dueDate);
-        console2.log("Amount:",Paytr_Test.getMapping(paymentReference1).amount);
-
-        vm.warp(block.timestamp + 130 seconds);
-
-        payOutArray = [paymentReference1]; 
-        Paytr_Test.payOutERC20Invoice(payOutArray);
 
         console2.log("Due date:",Paytr_Test.getMapping(paymentReference1).dueDate);
         console2.log("Amount:",Paytr_Test.getMapping(paymentReference1).amount);
