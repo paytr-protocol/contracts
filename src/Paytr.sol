@@ -198,14 +198,14 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         emit PaymentERC20Event(baseAsset, _payee, _feeAddress, _amount, 0, _feeAmount, _paymentReference);         
     }
 
-    function releaseEscrowPayment(bytes calldata _paymentReference) external {
+    function releaseEscrowPayment(bytes memory _paymentReference) external {
         PaymentERC20 storage paymentERC20 = paymentMapping[_paymentReference];
         
         if(msg.sender != paymentERC20.payer) revert NotPayer();
         if(paymentERC20.dueDate != 0) revert referenceNotInEscrow();
         if(paymentERC20.amount == 0) revert NoPrePayment();
 
-        paymentERC20.dueDate = uint40(block.timestamp + 120 seconds);
+        paymentERC20.dueDate = uint40(block.timestamp);
     }
 
                                                                                 
@@ -213,7 +213,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
     /// This function cannot be paused.
     /// @param payoutReferencesArray Insert the bytes array of references that need to be paid out. Only due payment references can be used.
     /// @dev Uses modifier nonReentrant.
-    function payOutERC20Invoice(bytes[] calldata payoutReferencesArray) external nonReentrant {
+    function payOutERC20Invoice(bytes[] calldata payoutReferencesArray) public nonReentrant {
 
         uint256 payoutReferencesArrayLength = payoutReferencesArray.length;
 
