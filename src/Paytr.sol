@@ -158,6 +158,19 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         emit PaymentERC20Event(baseAsset, _payee, _feeAddress, _amount, _dueDate, _feeAmount, _paymentReference);         
     }
 
+    /// @notice this function doesn't require a due date as parameter. It should be used for escrow payments where the release will be triggered manually.
+    /// @notice This function can't be used while it's paused.
+    /// @notice The sum of _amount and _feeAmount needs to be greater than the minTotalAmountParameter.
+    /// @param _payee The receiver of the payment.
+    /// @param _feeAddress When using an additional fee, this is the address that will receive the _feeAmount.
+    /// @param _amount The baseAsset amount in wei.
+    /// @param _feeAmount The total baseAsset fee amount in wei.
+    /// @param _paymentReference Reference of the related payment.
+    /// @param _shouldPayoutViaRequestNetwork This number determines whether or not the payout of the payment reference should run through the Request Network ERC20FeeProxy contract,
+    /// to make sure the Request Network protocol can detect this payment. Use 1 if you want to route the payout through Request Network or use 0 if you don't want this.
+    /// @dev Uses modifiers nonReentrant and whenNotPaused.
+    /// @dev The sum of _amount and _feeAmount needs to be greater than the minTotalAmountParameter.
+    /// @dev The parameter _shouldPayoutViaRequestNetwork is a uint8. Use 1-255 if you need the payout to go through the Request Network contract, use 0 if you don't need this.
     function payInvoiceERC20Escrow(
         address _payee,
         address _feeAddress,
@@ -198,6 +211,12 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         emit PaymentERC20Event(baseAsset, _payee, _feeAddress, _amount, 0, _feeAmount, _paymentReference);         
     }
 
+    /// @notice this function updates the due date of a payment and should be used when releasing escrow payments
+    /// @notice the original payment needs to have a due date of '0'.
+    /// @notice only the payer of the _paymentReference can call use this function
+    /// @notice the payout is not triggered by using this function. The payment reference is now marked to be due by updating the due date to the current block.timestamp
+    /// The _paymentReference will now be included in the next (automated) payout run.
+    /// @param _paymentReference Reference of the related payment
     function releaseEscrowPayment(bytes memory _paymentReference) external {
         PaymentERC20 storage paymentERC20 = paymentMapping[_paymentReference];
         
@@ -213,7 +232,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
     /// This function cannot be paused.
     /// @param payoutReferencesArray Insert the bytes array of references that need to be paid out. Only due payment references can be used.
     /// @dev Uses modifier nonReentrant.
-    function payOutERC20Invoice(bytes[] calldata payoutReferencesArray) public nonReentrant {
+    function payOutERC20Invoice(bytes[] calldata payoutReferencesArray) external nonReentrant {
 
         uint256 payoutReferencesArrayLength = payoutReferencesArray.length;
 
