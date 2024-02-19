@@ -235,6 +235,11 @@ contract PaytrTest is Test {
         console2.log("Due date:",Paytr_Test.getMapping(paymentReference1).dueDate);
         console2.log("Amount:",Paytr_Test.getMapping(paymentReference1).amount);
 
+        payOutArray = [paymentReference1];
+
+        //payout the reference that was just updated
+        Paytr_Test.payOutERC20Invoice(payOutArray);
+
     }
 
     function updateDueDate(bytes storage _paymentrefence) internal {
