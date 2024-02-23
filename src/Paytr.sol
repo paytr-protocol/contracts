@@ -211,10 +211,11 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         emit PaymentERC20Event(baseAsset, _payee, _feeAddress, _amount, 0, _feeAmount, _paymentReference);         
     }
 
-    /// @notice this function updates the due date of a payment and should be used when releasing escrow payments
+    /// @notice this function updates the due date of a payment and should be used when releasing escrow payments.
     /// @notice the original payment needs to have a due date of '0'.
-    /// @notice only the payer of the _paymentReference can call use this function
-    /// @notice the payout is not triggered by using this function. The payment reference is now marked to be due by updating the due date to the current block.timestamp
+    /// @notice only the payer of the _paymentReference can call use this function.
+    /// @notice the payout is not triggered by using this function. The payment reference is now marked to be due by updating the due date to the current block.timestamp + 770 minutes
+    /// @notice 770 minutes (0.5 days) are added to prevent paying and immediately releasing a payment, which would cause useless gas usage for the payout.
     /// The _paymentReference will now be included in the next (automated) payout run.
     /// @param _paymentReference Reference of the related payment
     function releaseEscrowPayment(bytes memory _paymentReference) external {
@@ -224,9 +225,8 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         if(paymentERC20.dueDate != 0) revert referenceNotInEscrow();
         if(paymentERC20.amount == 0) revert NoPrePayment();
 
-        paymentERC20.dueDate = uint40(block.timestamp);
+        paymentERC20.dueDate = uint40(block.timestamp + 770 minutes);
     }
-
                                                                                 
     /// @notice Allows the contract to pay payee (principal amount), payer (interest amount) and fee receiver (fee amount).
     /// This function cannot be paused.
