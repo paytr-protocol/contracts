@@ -18,16 +18,16 @@ contract PaytrTest is Test {
 
     Paytr Paytr_Test;
 
-    IERC20 comet = IERC20(0xF09F0369aB0a875254fB565E52226c88f10Bc839);
-    IERC20 baseAsset = IERC20(IComet(0xF09F0369aB0a875254fB565E52226c88f10Bc839).baseToken());
-    address baseAssetAddress = IComet(0xF09F0369aB0a875254fB565E52226c88f10Bc839).baseToken();
-    IERC20 cometWrapper = IERC20(0x797D7126C35E0894Ba76043dA874095db4776035);
+    IERC20 comet = IERC20(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e);
+    IERC20 baseAsset = IERC20(IComet(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e).baseToken());
+    address baseAssetAddress = IComet(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e).baseToken();
+    IERC20 cometWrapper = IERC20(0x99C37e76B38165389cBB163dAa74ac3f9Aa0e27F);
 
     address alice = address(0x1);
     address bob = address(0x2);
     address charlie = address(0x3);
     address dummyFeeAddress = address(0x4);
-    address owner = address(0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496);
+    address owner = address(0xFC078A6812eb56320f879A153A0bd23C34D9B508);
 
     uint256 amountToPay = 1000e6;
 
@@ -91,8 +91,8 @@ contract PaytrTest is Test {
 
     function setUp() public {
         Paytr_Test = new Paytr(
-            0xF09F0369aB0a875254fB565E52226c88f10Bc839,
-            0x797D7126C35E0894Ba76043dA874095db4776035,
+            0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e,
+            0x99C37e76B38165389cBB163dAa74ac3f9Aa0e27F,
             9000,
             7 days,
             365 days,
@@ -100,13 +100,13 @@ contract PaytrTest is Test {
             30
         );
 
-        vm.label(0xF09F0369aB0a875254fB565E52226c88f10Bc839, "Comet");
-        vm.label(0xDB3cB4f2688daAB3BFf59C24cC42D4B6285828e9, "USDC");
+        vm.label(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e, "Comet");
+        vm.label(0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238, "USDC");
         vm.label(alice, "alice");
         vm.label(bob, "bob");
         vm.label(charlie, "charlie");
         vm.label(address(this), "Paytr");
-        vm.label(0x131eb294E3803F23dc2882AB795631A12D1d8929, "ERC20FeeProxy contract");
+        vm.label(0x399F5EE127ce7432E4921a61b8CF52b0af52cbfE, "ERC20FeeProxy contract");
 
 
         //deal baseAsset
@@ -131,7 +131,7 @@ contract PaytrTest is Test {
         baseAsset.approve(address(Paytr_Test), 2**256 - 1);
         vm.stopPrank();
 
-        Paytr_Test.setERC20FeeProxy(0x131eb294E3803F23dc2882AB795631A12D1d8929);
+        Paytr_Test.setERC20FeeProxy(0x399F5EE127ce7432E4921a61b8CF52b0af52cbfE);
     }
 
     function test_payInvoiceERC20SingleZeroFee() public {

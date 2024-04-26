@@ -21,7 +21,7 @@ contract PaytrTest is Test {
     IERC20 comet = IERC20(0xF09F0369aB0a875254fB565E52226c88f10Bc839);
     IERC20 baseAsset = IERC20(IComet(0xF09F0369aB0a875254fB565E52226c88f10Bc839).baseToken());
     address baseAssetAddress = IComet(0xF09F0369aB0a875254fB565E52226c88f10Bc839).baseToken();
-    IERC20 cometWrapper = IERC20(0x797D7126C35E0894Ba76043dA874095db4776035);
+    IERC20 cometWrapper = IERC20(0x99C37e76B38165389cBB163dAa74ac3f9Aa0e27F);
 
     address alice = address(0x1);
     address bob = address(0x2);
@@ -92,7 +92,7 @@ contract PaytrTest is Test {
     function setUp() public {
         Paytr_Test = new Paytr(
             0xF09F0369aB0a875254fB565E52226c88f10Bc839,
-            0x797D7126C35E0894Ba76043dA874095db4776035,
+            0x99C37e76B38165389cBB163dAa74ac3f9Aa0e27F,
             9000,
             7 days,
             365 days,
@@ -225,7 +225,7 @@ contract PaytrTest is Test {
             0
         );
 
-        vm.warp(block.timestamp + 1 days);
+        vm.warp(block.timestamp + 770 minutes);
 
         updateDueDate(paymentReference1);
         vm.stopPrank();

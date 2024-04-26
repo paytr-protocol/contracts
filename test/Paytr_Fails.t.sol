@@ -18,10 +18,10 @@ contract PaytrTest is Test {
 
     Paytr Paytr_Test;
 
-    IERC20 comet = IERC20(0xF09F0369aB0a875254fB565E52226c88f10Bc839);
-    IERC20 baseAsset = IERC20(IComet(0xF09F0369aB0a875254fB565E52226c88f10Bc839).baseToken());
-    address baseAssetAddress = IComet(0xF09F0369aB0a875254fB565E52226c88f10Bc839).baseToken();
-    IERC20 cometWrapper = IERC20(0x797D7126C35E0894Ba76043dA874095db4776035);
+    IERC20 comet = IERC20(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e);
+    IERC20 baseAsset = IERC20(IComet(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e).baseToken());
+    address baseAssetAddress = IComet(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e).baseToken();
+    IERC20 cometWrapper = IERC20(0x99C37e76B38165389cBB163dAa74ac3f9Aa0e27F);
 
     address alice = address(0x1);
     address bob = address(0x2);
@@ -80,8 +80,8 @@ contract PaytrTest is Test {
 
     function setUp() public {
         Paytr_Test = new Paytr(
-            0xF09F0369aB0a875254fB565E52226c88f10Bc839,
-            0x797D7126C35E0894Ba76043dA874095db4776035,
+            0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e,
+            0x99C37e76B38165389cBB163dAa74ac3f9Aa0e27F,
             9000,
             7 days,
             365 days,
