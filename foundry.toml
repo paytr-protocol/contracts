@@ -4,12 +4,13 @@ out = "out"
 libs = ["lib"]
 evm_version = "paris"
 solc = "0.8.24"
+via_ir = true
 
 remappings = [
     "@openzeppelin/=lib/openzeppelin-contracts/"
 ]
 
 [fuzz]
-runs = 100
+runs = 256
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
