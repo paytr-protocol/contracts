@@ -114,6 +114,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
     /// @dev Uses modifiers nonReentrant and whenNotPaused.
     /// @dev The parameter _dueDate needs to be inserted in epoch time.
     /// @dev The sum of _amount and _feeAmount needs to be greater than the minTotalAmountParameter.
+    /// @dev Make sure to add salt to and hash the _paymentReference to increase privacy and prevent double references.
     /// @dev The parameter _shouldPayoutViaRequestNetwork is a uint8. Use 1-255 if you need the payout to go through the Request Network contract, use 0 if you don't need this.
 
     function payInvoiceERC20(
@@ -144,16 +145,16 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
 
             uint256 wrappedShares = IWrapper(wrapperAddress).deposit(cUsdcAmountToWrap, address(this));
 
-            paymentMapping[_paymentReference] = PaymentERC20(
-                _amount,
-                _feeAmount,
-                wrappedShares,
-                _dueDate,
-                msg.sender,
-                _payee,
-                _feeAddress,
-                _shouldPayoutViaRequestNetwork
-            );  
+            paymentMapping[_paymentReference] = PaymentERC20({
+                amount: _amount,
+                feeAmount: _feeAmount,
+                wrapperSharesReceived: wrappedShares,
+                dueDate: _dueDate,
+                payer: msg.sender,
+                payee: _payee,
+                feeAddress: _feeAddress,
+                shouldPayoutViaRequestNetwork: _shouldPayoutViaRequestNetwork
+        });  
 
         emit PaymentERC20Event(baseAsset, _payee, _feeAddress, _amount, _dueDate, _feeAmount, _paymentReference);         
     }
@@ -170,6 +171,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
     /// to make sure the Request Network protocol can detect this payment. Use 1 if you want to route the payout through Request Network or use 0 if you don't want this.
     /// @dev Uses modifiers nonReentrant and whenNotPaused.
     /// @dev The sum of _amount and _feeAmount needs to be greater than the minTotalAmountParameter.
+    /// @dev Make sure to add salt to and hash the _paymentReference to increase privacy and prevent double references.
     /// @dev The parameter _shouldPayoutViaRequestNetwork is a uint8. Use 1-255 if you need the payout to go through the Request Network contract, use 0 if you don't need this.
     function payInvoiceERC20Escrow(
         address _payee,
@@ -197,26 +199,26 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
 
             uint256 wrappedShares = IWrapper(wrapperAddress).deposit(cUsdcAmountToWrap, address(this));
 
-            paymentMapping[_paymentReference] = PaymentERC20(
-                _amount,
-                _feeAmount,
-                wrappedShares,
-                0,
-                msg.sender,
-                _payee,
-                _feeAddress,
-                _shouldPayoutViaRequestNetwork
-            );  
+            paymentMapping[_paymentReference] = PaymentERC20({
+                amount: _amount,
+                feeAmount: _feeAmount,
+                wrapperSharesReceived: wrappedShares,
+                dueDate: 0,
+                payer: msg.sender,
+                payee: _payee,
+                feeAddress: _feeAddress,
+                shouldPayoutViaRequestNetwork: _shouldPayoutViaRequestNetwork
+            });  
 
         emit PaymentERC20Event(baseAsset, _payee, _feeAddress, _amount, 0, _feeAmount, _paymentReference);         
     }
 
     /// @notice this function updates the due date of a payment and should be used when releasing escrow payments.
     /// @notice the original payment needs to have a due date of '0'.
-    /// @notice only the payer of the _paymentReference can call use this function.
+    /// @notice only the payer of the _paymentReference can call this function.
     /// @notice the payout is not triggered by using this function. The payment reference is now marked to be due by updating the due date to the current block.timestamp + 770 minutes
     /// @notice 770 minutes (0.5 days) are added to prevent paying and immediately releasing a payment, which would cause useless gas usage for the payout.
-    /// The _paymentReference will now be included in the next (automated) payout run.
+    /// The _paymentReference will now be included in the next (automated) payout run, or can be triggered manually if needed
     /// @param _paymentReference Reference of the related payment
     function releaseEscrowPayment(bytes memory _paymentReference) external {
         PaymentERC20 storage paymentERC20 = paymentMapping[_paymentReference];
