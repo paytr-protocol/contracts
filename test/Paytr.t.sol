@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
 import {Test, console2} from "forge-std/Test.sol";
@@ -21,13 +21,14 @@ contract PaytrTest is Test {
     IERC20 comet = IERC20(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e);
     IERC20 baseAsset = IERC20(IComet(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e).baseToken());
     address baseAssetAddress = IComet(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e).baseToken();
-    IERC20 cometWrapper = IERC20(0x99C37e76B38165389cBB163dAa74ac3f9Aa0e27F);
+    IERC20 cometWrapper = IERC20(0xC3836072018B4D590488b851d574556f2EeB895a);
 
-    address alice = address(0x1);
+    address alice = address(0x9);
     address bob = address(0x2);
     address charlie = address(0x3);
     address dummyFeeAddress = address(0x4);
-    address owner = address(0xFC078A6812eb56320f879A153A0bd23C34D9B508);
+    address owner = address(0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496);
+    address whale = address(0x75C0c372da875a4Fc78E8A37f58618a6D18904e8);
 
     uint256 amountToPay = 1000e6;
 
@@ -92,7 +93,7 @@ contract PaytrTest is Test {
     function setUp() public {
         Paytr_Test = new Paytr(
             0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e,
-            0x99C37e76B38165389cBB163dAa74ac3f9Aa0e27F,
+            0xC3836072018B4D590488b851d574556f2EeB895a,
             9000,
             7 days,
             365 days,
@@ -110,15 +111,20 @@ contract PaytrTest is Test {
 
 
         //deal baseAsset
-        deal(address(baseAsset), alice, 10_000e6);
+        //deal(address(baseAsset), alice, 10_000e6);
+        vm.startPrank(whale);
+        baseAsset.transfer(alice, 10000e6);
         uint256 balanceAlice = baseAsset.balanceOf(alice);
         assertEq(balanceAlice, 10_000e6);
-        deal(address(baseAsset), bob, 10_000e6);
+        //deal(address(baseAsset), bob, 10_000e6);
+        baseAsset.transfer(bob, 10_000e6);
         uint256 balanceBob = baseAsset.balanceOf(bob);
         assertEq(balanceBob, 10_000e6);
-        deal(address(baseAsset), charlie, 10_000e6);
+        //deal(address(baseAsset), charlie, 10_000e6);
+        baseAsset.transfer(charlie, 10_000e6);
         uint256 balanceCharlie = baseAsset.balanceOf(charlie);
         assertEq(balanceCharlie, 10_000e6);
+        vm.stopPrank();
 
         //approve baseAsset to contract
         vm.startPrank(alice);
@@ -138,7 +144,7 @@ contract PaytrTest is Test {
 
         assert(baseAsset.allowance(alice, address(Paytr_Test)) > amountToPay);
 
-        vm.expectEmit(address(Paytr_Test));        
+        vm.expectEmit(address(Paytr_Test));
 
         emit PaymentERC20Event(baseAssetAddress, bob, dummyFeeAddress, amountToPay, uint40(block.timestamp + 10 days), 0, paymentReference1);
 
@@ -154,11 +160,11 @@ contract PaytrTest is Test {
         );
         
         //baseAsset balances
-        assertEq(getAlicesBaseAssetBalance(), 10000e6 - amountToPay);
-        assertEq(getBobsBaseAssetBalance(), 10000e6);
-        assertEq(getCharliesBaseAssetBalance(), 10000e6);
+        assertEq(getAlicesBaseAssetBalance(), 10_000e6 - amountToPay);
+        assertEq(getBobsBaseAssetBalance(), 10_000e6);
+        assertEq(getCharliesBaseAssetBalance(), 10_000e6);
         assertEq(getDummyFeeBaseAssetBalance(), 0);
-        assertEq(baseAsset.balanceOf(address(Paytr_Test)), 0);
+        assertEq(getContractBaseAssetBalance(), 0);
 
         //comet (cbaseAssetv3) balances
         assertEq(comet.balanceOf(alice), 0);
@@ -809,7 +815,7 @@ contract PaytrTest is Test {
 
         vm.warp(block.timestamp + 29 days);
 
-        vm.expectEmit(address(0x131eb294E3803F23dc2882AB795631A12D1d8929));
+        vm.expectEmit(address(0x399F5EE127ce7432E4921a61b8CF52b0af52cbfE));
 
         emit TransferWithReferenceAndFee(
             baseAssetAddress,
