@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {Paytr} from "../src/Paytr.sol";
@@ -30,6 +30,7 @@ contract PaytrTest is Test, Paytr_Helpers {
 
         vm.label(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e, "Comet");
         vm.label(0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238, "USDC");
+        vm.label(0xC3836072018B4D590488b851d574556f2EeB895a, "Wrapper Contract");
         vm.label(alice, "alice");
         vm.label(bob, "bob");
         vm.label(charlie, "charlie");
@@ -42,7 +43,7 @@ contract PaytrTest is Test, Paytr_Helpers {
         Paytr_Test.setERC20FeeProxy(0x399F5EE127ce7432E4921a61b8CF52b0af52cbfE);
     }
 
-    function testFail_zeroAmount() public {
+    function testFail_zeroAmountZeroFee() public {
 
         uint256 amountToPay = 0;
 
@@ -53,6 +54,23 @@ contract PaytrTest is Test, Paytr_Helpers {
             uint40(block.timestamp + 10 days),
             amountToPay,
             0,
+            paymentReference1,
+            0
+        );
+
+    }
+
+    function testFail_zeroAmountWithFee() public {
+
+        uint256 amountToPay = 0;
+
+        vm.prank(alice);
+        Paytr_Test.payInvoiceERC20(
+            bob,
+            dummyFeeAddress,
+            uint40(block.timestamp + 10 days),
+            amountToPay,
+            1000e6,
             paymentReference1,
             0
         );

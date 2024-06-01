@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {Paytr} from "../src/Paytr.sol";
@@ -20,9 +20,12 @@ contract Paytr_Helpers is Test {
     Paytr Paytr_Test;
 
     IERC20 comet = IERC20(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e);
+    address cometAddress = address(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e);
     IERC20 baseAsset = IERC20(IComet(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e).baseToken());
     address baseAssetAddress = IComet(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e).baseToken();
     IERC20 cometWrapper = IERC20(0xC3836072018B4D590488b851d574556f2EeB895a);
+    address cometWrapperAddress = address(0xC3836072018B4D590488b851d574556f2EeB895a);
+    IERC20 compToken = IERC20(0xA6c8D1c55951e8AC44a0EaA959Be5Fd21cc07531);
 
     address alice = address(0x9);
     address bob = address(0x2);
@@ -54,7 +57,7 @@ contract Paytr_Helpers is Test {
     event PayOutERC20Event(address tokenAddress, address payee, address feeAddress, uint256 amount, bytes paymentReference, uint256 feeAmount);
     event InterestPayoutEvent(address tokenAddress, address payee, uint256 interestAmount, bytes paymentReference);
     event ContractParametersUpdatedEvent(uint16 feeModifier, uint256 minDueDateParameter, uint256 maxDueDateParameter, uint256 minAmount, uint8 maxPayoutArraySize);
-    event setERC20FeeProxyEvent(address ERC20FeeProxyAddress);
+    event SetERC20FeeProxyEvent(address ERC20FeeProxyAddress);
     
     //external contracts events:
     event TransferWithReferenceAndFee(address tokenAddress, address to, uint256 amount, bytes indexed paymentReference, uint256 feeAmount, address feeAddress);
