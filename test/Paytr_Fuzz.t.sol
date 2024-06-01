@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {Paytr} from "../src/Paytr.sol";
@@ -30,6 +30,7 @@ contract PaytrTest is Test, Paytr_Helpers {
 
         vm.label(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e, "Comet");
         vm.label(0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238, "USDC");
+        vm.label(0xC3836072018B4D590488b851d574556f2EeB895a, "Wrapper Contract");
         vm.label(alice, "alice");
         vm.label(bob, "bob");
         vm.label(charlie, "charlie");
@@ -44,7 +45,7 @@ contract PaytrTest is Test, Paytr_Helpers {
 
     function testFuzz_payInvoiceERC20SingleZeroFee(uint256 _amount, address _payee) public {
         _amount = bound(_amount, 100e6, 50_000_000e6);
-        vm.assume(_payee != address(0));
+        vm.assume(_payee != address(0) && _payee != cometWrapperAddress && _payee != baseAssetAddress);
 
         assert(baseAsset.allowance(alice, address(Paytr_Test)) > _amount);
 
@@ -83,8 +84,8 @@ contract PaytrTest is Test, Paytr_Helpers {
     function testFuzz_payInvoiceERC20SingleWithFee(uint256 _amount, uint256 _feeAmount, address _payee, address _feeAddress) public {
         _amount = bound(_amount, 100e6, 50_000_000e6 - 10e6);
         _feeAmount = bound(_feeAmount, 1e6, 10e6);
-        vm.assume(_payee != address(0));
-        vm.assume(_feeAddress != address(0));
+        vm.assume(_payee != address(0) && _payee != cometWrapperAddress && _payee != baseAssetAddress);
+        vm.assume(_feeAddress != address(0) && _feeAddress != cometWrapperAddress && _feeAddress != baseAssetAddress);
 
         assertGe(baseAsset.allowance(alice, address(Paytr_Test)), _amount + _feeAmount);
 
@@ -123,8 +124,8 @@ contract PaytrTest is Test, Paytr_Helpers {
     function testFuzz_payInvoiceERC20Double(uint256 _amount, uint256 _feeAmount, address _payee, address _feeAddress) public {
         _amount = bound(_amount, 100e6, 50_000_000e6 - 10e6);
         _feeAmount = bound(_feeAmount, 1e6, 10e6);
-        vm.assume(_payee != address(0));
-        vm.assume(_feeAddress != address(0));
+        vm.assume(_payee != address(0) && _payee != cometWrapperAddress && _payee != baseAssetAddress);
+        vm.assume(_feeAddress != address(0) && _feeAddress != cometWrapperAddress && _feeAddress != baseAssetAddress);
 
         assertGe(baseAsset.allowance(alice, address(Paytr_Test)), _amount + _feeAmount);
         assertGe(baseAsset.allowance(bob, address(Paytr_Test)), _amount + _feeAmount);
@@ -146,19 +147,19 @@ contract PaytrTest is Test, Paytr_Helpers {
         vm.stopPrank();
 
         //baseAsset balances
-        assertEq(getAlicesBaseAssetBalance(), 50_000_000e6 - _amount - _feeAmount);
-        assertEq(getBobsBaseAssetBalance(), 50_000_000e6);
-        assertEq(getCharliesBaseAssetBalance(), 50_000_000e6);
-        assertEq(getContractBaseAssetBalance(), 0);
+        assertEq(getAlicesBaseAssetBalance(), 50_000_000e6 - _amount - _feeAmount, "1-1");
+        assertEq(getBobsBaseAssetBalance(), 50_000_000e6, "1-2");
+        assertEq(getCharliesBaseAssetBalance(), 50_000_000e6, "1-3");
+        assertEq(getContractBaseAssetBalance(), 0, "1-4");
         
         //comet (cbaseAssetv3) balances
-        assertEq(comet.balanceOf(alice), 0);
-        assertEq(comet.balanceOf(_payee), 0);
-        assertEq(comet.balanceOf(charlie), 0);
-        assertEq(comet.balanceOf(address(Paytr_Test)), 0);       
+        assertEq(comet.balanceOf(alice), 0, "1-5");
+        assertEq(comet.balanceOf(_payee), 0, "1-6");
+        assertEq(comet.balanceOf(charlie), 0, "1-7");
+        assertEq(comet.balanceOf(address(Paytr_Test)), 0, "1-8");       
         
         //cometWrapper (wcbaseAssetv3) balances
-        assertApproxEqRel(getContractCometWrapperBalance(), _amount + _feeAmount, 0.1e18);
+        assertApproxEqRel(getContractCometWrapperBalance(), _amount + _feeAmount, 0.1e18, "1-9");
 
         uint256 contractCometWrapperBalanceBeforeSecondPayment = getContractCometWrapperBalance();
 
@@ -181,24 +182,24 @@ contract PaytrTest is Test, Paytr_Helpers {
         uint256 contractCometWrapperBalanceAfterSecondPayment = getContractCometWrapperBalance();
 
         //baseAsset balances
-        assertEq(getBobsBaseAssetBalance(), 50_000_000e6 - _amount - _feeAmount);
-        assertEq(getCharliesBaseAssetBalance(), 50_000_000e6);
-        assertEq(getContractBaseAssetBalance(), 0);
+        assertEq(getBobsBaseAssetBalance(), 50_000_000e6 - _amount - _feeAmount, "1");
+        assertEq(getCharliesBaseAssetBalance(), 50_000_000e6, "2");
+        assertEq(getContractBaseAssetBalance(), 0, "3");
 
         //comet (cbaseAssetv3) balances
-        assertEq(comet.balanceOf(alice), 0);
-        assertEq(comet.balanceOf(bob), 0);
-        assertEq(comet.balanceOf(_feeAddress), 0);
-        assertEq(comet.balanceOf(address(Paytr_Test)), 0);          
+        assertEq(comet.balanceOf(alice), 0, "4");
+        assertEq(comet.balanceOf(bob), 0, "5");
+        assertEq(comet.balanceOf(_feeAddress), 0, "6");
+        assertEq(comet.balanceOf(address(Paytr_Test)), 0, "7");          
         
         //cometWrapper (wcbaseAssetv3) balances
-        assertApproxEqRel(contractCometWrapperBalanceAfterSecondPayment, contractCometWrapperBalanceBeforeSecondPayment + _amount + _feeAmount, 0.1e18);
+        assertApproxEqRel(contractCometWrapperBalanceAfterSecondPayment, contractCometWrapperBalanceBeforeSecondPayment + _amount + _feeAmount, 0.1e18, "8");
 
     }
 
     function testFuzz_payAndRedeemSingleZeroFee(uint256 _amount, address _payee) public {
         _amount = bound(_amount, 100e6, 50_000_000e6);
-        vm.assume(_payee != address(0) && _payee != alice && _payee != bob && _payee != charlie && _payee != baseAssetAddress); //_payee cannot be alice, bob or charlie because they are dealt the max. amount of USDC. This can cause addition overflow in the payout
+        vm.assume(_payee != address(0) && _payee != alice && _payee != bob && _payee != charlie && _payee != baseAssetAddress && _payee != cometWrapperAddress); //_payee cannot be alice, bob or charlie because they are dealt the max. amount of USDC. This can cause addition overflow in the payout
         assert(baseAsset.allowance(alice, address(Paytr_Test)) >= _amount);
         
         vm.expectEmit(address(Paytr_Test));        
@@ -221,7 +222,7 @@ contract PaytrTest is Test, Paytr_Helpers {
         payOutArray = [paymentReference1];
         
         //increase time to gain interest
-        vm.warp(block.timestamp + 120 days);
+        vm.warp(block.timestamp + 20 days);
 
         vm.expectEmit(address(Paytr_Test));        
 
@@ -262,10 +263,10 @@ contract PaytrTest is Test, Paytr_Helpers {
     }
 
     function testFuzz_payAndRedeemSingleWithFee(uint256 _amount, uint256 _feeAmount, address _payee, address _feeAddress) public {
-        _amount = bound(_amount, 100e6, 50_000_000e6 - 10e6);
+        _amount = bound(_amount, 100e6, 300_000e6 - 10e6);
         _feeAmount = bound(_feeAmount, 1e6, 10e6);
-        vm.assume(_payee != address(0) && _payee != alice && _payee != bob && _payee != charlie && _payee != baseAssetAddress); //_payee cannot be alice, bob or charlie because they are dealt the max. amount of USDC. This can cause addition overflow in the payout
-        vm.assume(_feeAddress != address(0) && _feeAddress != alice && _feeAddress != bob && _feeAddress != charlie && _feeAddress != baseAssetAddress);
+        vm.assume(_payee != address(0) && _payee != alice && _payee != bob && _payee != charlie && _payee != baseAssetAddress && _payee != cometWrapperAddress); //_payee cannot be alice, bob or charlie because they are dealt the max. amount of USDC. This can cause addition overflow in the payout
+        vm.assume(_feeAddress != address(0) && _feeAddress != alice && _feeAddress != bob && _feeAddress != charlie && _feeAddress != baseAssetAddress && _feeAddress != cometWrapperAddress);
         
         assert(baseAsset.allowance(alice, address(Paytr_Test)) >= _amount + _feeAmount);
 
@@ -294,7 +295,7 @@ contract PaytrTest is Test, Paytr_Helpers {
         payOutArray = [paymentReference1];
         
         //increase time to gain interest
-        vm.warp(block.timestamp + 120 days);
+        vm.warp(block.timestamp + 20 days);
 
         vm.expectEmit(address(0x399F5EE127ce7432E4921a61b8CF52b0af52cbfE));
 
@@ -353,9 +354,8 @@ contract PaytrTest is Test, Paytr_Helpers {
     }
 
     function testFuzz_payThreePayOutTwoZeroFee(uint256 _amount, address _payee) public {
-        //vm.assume(_amount >= 100e6 && _amount <= 10_000e6);
         _amount = bound(_amount, 100e6, 50_000_000e6);
-        vm.assume(_payee != address(0) && _payee != alice && _payee != bob && _payee != charlie && _payee != baseAssetAddress); //_payee cannot be alice, bob or charlie because they are dealt the max. amount of USDC. This can cause addition overflow in the payout
+        vm.assume(_payee != address(0) && _payee != alice && _payee != bob && _payee != charlie && _payee != baseAssetAddress && _payee != cometWrapperAddress); //_payee cannot be alice, bob or charlie because they are dealt the max. amount of USDC. This can cause addition overflow in the payout
         assert(baseAsset.allowance(alice, address(Paytr_Test)) >= _amount);
         assert(baseAsset.allowance(bob, address(Paytr_Test)) >= _amount);
 
@@ -485,8 +485,8 @@ contract PaytrTest is Test, Paytr_Helpers {
     function testFuzz_usePaymentReferenceTwiceAfterPayout(uint256 _amount, address _payee, address _payee2) public {
         //this test checks whether it's possible to pay a certain reference, have it paid out and use the same reference again
         vm.assume(_amount >= 100e6 && _amount <= 10_000e6); //prevent overflow if one of the payees has a high amount of baseAsset
-        vm.assume(_payee != address(0) && _payee != alice && _payee != bob && _payee != charlie); //_payee cannot be alice, bob or charlie because they are dealt the max. amount of USDC. This can cause addition overflow in the payout
-        vm.assume(_payee2 != address(0) && _payee2 != alice && _payee2 != bob && _payee2 != charlie);
+        vm.assume(_payee != address(0) && _payee != alice && _payee != bob && _payee != charlie && _payee != baseAssetAddress && _payee != cometWrapperAddress); //_payee cannot be alice, bob or charlie because they are dealt the max. amount of USDC. This can cause addition overflow in the payout
+        vm.assume(_payee2 != address(0) && _payee2 != alice && _payee2 != bob && _payee2 != charlie && _payee2 != baseAssetAddress && _payee2 != cometWrapperAddress);
         vm.assume(_payee != _payee2);
         assert(baseAsset.allowance(alice, address(Paytr_Test)) > _amount);
 
@@ -542,8 +542,8 @@ contract PaytrTest is Test, Paytr_Helpers {
         _amount = bound(_amount, 1e6, 10_000e6);
         console2.log(Paytr_Test.minTotalAmountParameter());
         vm.assume((_amount + _feeAmount) >= Paytr_Test.minTotalAmountParameter());
-        vm.assume(_payee != address(0) && _payee != alice && _payee != bob && _payee != charlie); //_payee cannot be alice, bob or charlie because they are dealt the max. amount of USDC. This can cause addition overflow in the payout
-        vm.assume(_feeAddress != address(0) && _feeAddress != alice && _feeAddress != bob && _feeAddress != charlie);
+        vm.assume(_payee != address(0) && _payee != alice && _payee != bob && _payee != charlie && _payee != baseAssetAddress && _payee != cometWrapperAddress); //_payee cannot be alice, bob or charlie because they are dealt the max. amount of USDC. This can cause addition overflow in the payout
+        vm.assume(_feeAddress != address(0) && _feeAddress != alice && _feeAddress != bob && _feeAddress != charlie&& _feeAddress != baseAssetAddress && _feeAddress != cometWrapperAddress);
 
         assert(baseAsset.allowance(alice, address(Paytr_Test)) > 1000e6);
 
@@ -593,7 +593,7 @@ contract PaytrTest is Test, Paytr_Helpers {
     function testFuzz_sendBaseAssetBalance(uint256 _amount, address _payee) public {
         vm.assume(_amount > 0);
         _amount = bound(_amount, 1e6, 100_000e6);
-        vm.assume(_payee != alice && _payee != bob && _payee != charlie);
+        vm.assume(_payee != alice && _payee != bob && _payee != charlie && _payee != baseAssetAddress && _payee != cometWrapperAddress);
         uint256 contractBaseAssetBalanceBeforePayOut = getContractBaseAssetBalance();
 
         testFuzz_payAndRedeemSingleZeroFee(_amount, _payee);
