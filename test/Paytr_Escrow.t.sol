@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.24;
+pragma solidity 0.8.26;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {Paytr} from "../src/Paytr.sol";
@@ -30,6 +30,7 @@ contract PaytrTest is Test, Paytr_Helpers {
 
         vm.label(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e, "Comet");
         vm.label(0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238, "USDC");
+        vm.label(0xC3836072018B4D590488b851d574556f2EeB895a, "Wrapper Contract");
         vm.label(alice, "alice");
         vm.label(bob, "bob");
         vm.label(charlie, "charlie");
@@ -85,7 +86,7 @@ contract PaytrTest is Test, Paytr_Helpers {
 
         assert(baseAsset.allowance(alice, address(Paytr_Test)) > amountToPay);
 
-        vm.expectEmit(address(Paytr_Test));        
+        vm.expectEmit(address(Paytr_Test));     
 
         emit PaymentERC20Event(baseAssetAddress, bob, dummyFeeAddress, amountToPay, 0, 10000, paymentReference1);
 
@@ -159,7 +160,7 @@ contract PaytrTest is Test, Paytr_Helpers {
 
         payOutArray = [paymentReference1];
 
-        vm.warp(block.timestamp + 770 minutes);
+        vm.warp(block.timestamp + 771 minutes);
 
         //payout the reference that was just updated
         Paytr_Test.payOutERC20Invoice(payOutArray);
