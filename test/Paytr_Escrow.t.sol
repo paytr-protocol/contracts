@@ -124,20 +124,20 @@ contract PaytrTest is Test, Paytr_Helpers {
 
         vm.expectEmit(address(Paytr_Test));        
 
-        emit PaymentERC20Event(baseAssetAddress, bob, dummyFeeAddress, amountToPay, 0, 10000, paymentReference1);
+        emit PaymentERC20Event(baseAssetAddress, bob, dummyFeeAddress, amountToPay, 0, 0, paymentReference1);
 
         vm.startPrank(alice);
         Paytr_Test.payInvoiceERC20Escrow(
             bob,
             dummyFeeAddress,
             amountToPay,
-            10000,
+            0,
             paymentReference1,
             0
         );
 
         //baseAsset balances
-        assertEq(getAlicesBaseAssetBalance(), 50_000_000e6 - amountToPay - 10000);
+        assertEq(getAlicesBaseAssetBalance(), 50_000_000e6 - amountToPay);
         assertEq(getBobsBaseAssetBalance(), 50_000_000e6);
         assertEq(getCharliesBaseAssetBalance(), 50_000_000e6);
         assertEq(baseAsset.balanceOf(dummyFeeAddress), 0);
@@ -162,7 +162,7 @@ contract PaytrTest is Test, Paytr_Helpers {
 
         vm.warp(block.timestamp + 771 minutes);
 
-        //payout the reference that was just updated
+        //pay out the reference that was just updated
         Paytr_Test.payOutERC20Invoice(payOutArray);
 
     }
