@@ -19,20 +19,37 @@ contract Paytr_Helpers is Test {
     
     Paytr Paytr_Test;
 
-    IERC20 comet = IERC20(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e);
-    address cometAddress = address(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e);
-    IERC20 baseAsset = IERC20(IComet(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e).baseToken());
-    address baseAssetAddress = IComet(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e).baseToken();
-    IERC20 cometWrapper = IERC20(0xC3836072018B4D590488b851d574556f2EeB895a);
-    address cometWrapperAddress = address(0xC3836072018B4D590488b851d574556f2EeB895a);
-    IERC20 compToken = IERC20(0xA6c8D1c55951e8AC44a0EaA959Be5Fd21cc07531);
+    //SEPOLIA USDC
+    // IERC20 comet = IERC20(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e);
+    // address cometAddress = address(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e);
+    // IERC20 baseAsset = IERC20(IComet(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e).baseToken());
+    // address baseAssetAddress = IComet(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e).baseToken();
+    // IERC20 cometWrapper = IERC20(0xC3836072018B4D590488b851d574556f2EeB895a);
+    // address cometWrapperAddress = address(0xC3836072018B4D590488b851d574556f2EeB895a);
+    // IERC20 compToken = IERC20(0xA6c8D1c55951e8AC44a0EaA959Be5Fd21cc07531);
+
+    // address alice = address(0x9);
+    // address bob = address(0x2);
+    // address charlie = address(0x3);
+    // address dummyFeeAddress = address(0x4);
+    // address owner = address(0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496);
+    // address whale = address(0x75C0c372da875a4Fc78E8A37f58618a6D18904e8);
+
+    //BASE SEPOLIA USDC
+    IERC20 comet = IERC20(0x571621Ce60Cebb0c1D442B5afb38B1663C6Bf017);
+    address cometAddress = address(0x571621Ce60Cebb0c1D442B5afb38B1663C6Bf017);
+    IERC20 baseAsset = IERC20(IComet(0x571621Ce60Cebb0c1D442B5afb38B1663C6Bf017).baseToken());
+    address baseAssetAddress = IComet(0x571621Ce60Cebb0c1D442B5afb38B1663C6Bf017).baseToken();
+    IERC20 cometWrapper = IERC20(0x383eCD943E338357c0D81942933acA781C2E74cE);
+    address cometWrapperAddress = address(0x383eCD943E338357c0D81942933acA781C2E74cE);
+    IERC20 compToken = IERC20(0x2f535da74048c0874400f0371Fba20DF983A56e2);
 
     address alice = address(0x9);
     address bob = address(0x2);
     address charlie = address(0x3);
     address dummyFeeAddress = address(0x4);
     address owner = address(0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496);
-    address whale = address(0x75C0c372da875a4Fc78E8A37f58618a6D18904e8);
+    address whale = address(0xFaEc9cDC3Ef75713b48f46057B98BA04885e3391);
 
     bytes paymentReference1 = "0x494e56332d32343001";
     bytes paymentReference2 = "0x494e56332d32343002";

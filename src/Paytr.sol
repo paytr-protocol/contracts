@@ -71,7 +71,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         address payer;
         address payee;
         address feeAddress;
-        uint8 shouldPayoutViaRequestNetwork;
+        bool shouldPayoutViaRequestNetwork;
     }
 
     constructor(address _cometAddress, address _wrapperAddress, uint16 _contractFeeModifier, uint256 _minDueDateParameter, uint256 _maxDueDateParameter, uint256 _minTotalAmountParameter, uint8 _maxPayoutArraySize) payable {
@@ -116,7 +116,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         uint256 _amount,
         uint256 _feeAmount,
         bytes calldata _paymentReference,
-        uint8 _shouldPayoutViaRequestNetwork
+        bool _shouldPayoutViaRequestNetwork
         ) external nonReentrant whenNotPaused {
 
             PaymentERC20 storage paymentERC20 = paymentMapping[_paymentReference];
@@ -172,7 +172,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
         uint256 _amount,
         uint256 _feeAmount,
         bytes calldata _paymentReference,
-        uint8 _shouldPayoutViaRequestNetwork
+        bool _shouldPayoutViaRequestNetwork
         ) external nonReentrant whenNotPaused {
 
             PaymentERC20 storage paymentERC20 = paymentMapping[_paymentReference];
@@ -187,6 +187,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             IERC20(baseAsset).safeTransferFrom(msg.sender, address(this), totalAmount);
             
             uint256 cUsdcbalanceBeforeSupply = getContractCometBalance();
+            IERC20(baseAsset).forceApprove(cometAddress, totalAmount);
             IComet(cometAddress).supply(baseAsset, totalAmount);
             uint256 cUsdcbalanceAfterSupply = getContractCometBalance();
             uint256 cUsdcAmountToWrap = cUsdcbalanceAfterSupply - cUsdcbalanceBeforeSupply;         
@@ -238,7 +239,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             PaymentERC20 storage paymentERC20 = paymentMapping[payoutReferencesArray[i]];
             if(paymentERC20.amount == 0) revert NoPrePayment();
             if(paymentERC20.dueDate > block.timestamp || paymentERC20.dueDate == 0 ) revert ReferenceNotDue();
-            uint8 RNPayment = paymentERC20.shouldPayoutViaRequestNetwork;
+            bool RNPayment = paymentERC20.shouldPayoutViaRequestNetwork;
 
             address _payee = paymentERC20.payee;
             address _payer = paymentERC20.payer;
@@ -264,7 +265,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
             uint256 _totalInterestGathered = baseAssetBalanceAfterCometWithdraw - baseAssetBalanceBeforeCometWithdraw - _amount - _feeAmount;
             uint256 _interestAmount = _totalInterestGathered * contractFeeModifier / 10000;
 
-            if(RNPayment != 0) {
+            if(RNPayment == true) {
                 IERC20FeeProxy(ERC20FeeProxyAddress).transferFromWithReferenceAndFee(
                     baseAsset,
                     _payee,

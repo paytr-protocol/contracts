@@ -22,8 +22,8 @@ contract PaytrTest is Test, Paytr_Helpers {
 
     function setUp() public {
         Paytr_Test = new Paytr(
-            0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e,
-            0xC3836072018B4D590488b851d574556f2EeB895a,
+            cometAddress,
+            cometWrapperAddress,
             9000,
             7 days,
             365 days,
@@ -31,9 +31,9 @@ contract PaytrTest is Test, Paytr_Helpers {
             30
         );
 
-        vm.label(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e, "Comet");
-        vm.label(0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238, "USDC");
-        vm.label(0xC3836072018B4D590488b851d574556f2EeB895a, "Wrapper Contract");
+        vm.label(cometAddress, "Comet");
+        vm.label(baseAssetAddress, "USDC");
+        vm.label(cometWrapperAddress, "Wrapper Contract");
         vm.label(alice, "alice");
         vm.label(bob, "bob");
         vm.label(charlie, "charlie");
@@ -62,7 +62,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference1,
-            0
+            false
         );
         
         //baseAsset balances
@@ -100,7 +100,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             10000,
             paymentReference1,
-            0
+            false
         );
         
         //baseAsset balances
@@ -139,7 +139,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference1,
-            1
+            false
         );
         vm.stopPrank();
 
@@ -174,7 +174,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference2,
-            0       
+            false      
         );
         vm.stopPrank();
 
@@ -210,7 +210,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference1,
-            1
+            false
         );
 
         uint256 aliceBAseAssetBalanceBeforePayOut = getAlicesBaseAssetBalance();
@@ -271,7 +271,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference1,
-            0
+            false
         );
 
         Paytr_Test.payInvoiceERC20(
@@ -281,7 +281,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference2,
-            0
+            false
         );
 
         Paytr_Test.payInvoiceERC20(
@@ -291,7 +291,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference3,
-            0
+            false
         );
 
         Paytr_Test.payInvoiceERC20(
@@ -301,7 +301,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference4,
-            0
+            false
         );
 
         Paytr_Test.payInvoiceERC20(
@@ -311,7 +311,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference5,
-            0
+            false
         );
         vm.stopPrank();
 
@@ -330,7 +330,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference1,
-            0
+            false
         );
 
         Paytr_Test.payInvoiceERC20(
@@ -340,7 +340,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference2,
-            0
+            false
         );
 
         Paytr_Test.payInvoiceERC20(
@@ -350,7 +350,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference3,
-            0
+            false
         );
 
         Paytr_Test.payInvoiceERC20(
@@ -360,7 +360,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference4,
-            0
+            false
         );
 
         Paytr_Test.payInvoiceERC20(
@@ -370,7 +370,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference5,
-            0
+            false
         );
 
         Paytr_Test.payInvoiceERC20(
@@ -380,7 +380,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference6,
-            0
+            false
         );
 
         Paytr_Test.payInvoiceERC20(
@@ -390,7 +390,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference7,
-            0
+            false
         );
 
         Paytr_Test.payInvoiceERC20(
@@ -400,7 +400,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference8,
-            0
+            false
         );
 
         Paytr_Test.payInvoiceERC20(
@@ -410,7 +410,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference9,
-            0
+            false
         );
 
         Paytr_Test.payInvoiceERC20(
@@ -420,7 +420,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference10,
-            0
+            false
         );
         vm.stopPrank();
 
@@ -444,7 +444,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             10000,
             paymentReference1,
-            0
+            false
         );
 
         uint256 aliceBAseAssetBalanceBeforePayOut = getAlicesBaseAssetBalance();
@@ -515,7 +515,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference1,
-            0
+            false
         );
         vm.stopPrank();
 
@@ -530,7 +530,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference2,
-            0
+            false
         );
         vm.stopPrank();
 
@@ -545,7 +545,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference3,
-            0
+            false
         );
         vm.stopPrank();
 
@@ -633,7 +633,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference1,
-            0
+            false
         );
         vm.stopPrank();
 
@@ -680,7 +680,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference1,
-            0
+            false
         );
         vm.stopPrank();
 
@@ -699,7 +699,7 @@ contract PaytrTest is Test, Paytr_Helpers {
         assert(baseAsset.allowance(alice, address(Paytr_Test)) > 1000e6);
         uint256 feeAmount = 1e6;
 
-        vm.expectEmit();
+        vm.expectEmit(address(this));
         emit PaymentERC20Event(baseAssetAddress, bob, dummyFeeAddress, amountToPay, uint40(block.timestamp + 28 days), feeAmount, paymentReference3);
 
         vm.startPrank(alice);
@@ -710,7 +710,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             feeAmount,
             paymentReference3,
-            1
+            true
         );
         
         //baseAsset balances
@@ -743,7 +743,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             Paytr_Test.getMapping(paymentReference3).feeAddress
         );
         
-        vm.expectEmit();
+        vm.expectEmit(address(this));
 
         emit PayOutERC20Event(
             baseAssetAddress,
@@ -756,6 +756,7 @@ contract PaytrTest is Test, Paytr_Helpers {
 
         payOutArray = [paymentReference3];
         Paytr_Test.payOutERC20Invoice(payOutArray);
+
         vm.stopPrank();
     }
 
@@ -773,7 +774,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference3,
-            0
+            false
         );
 
         vm.warp(30 days);
