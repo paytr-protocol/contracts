@@ -600,7 +600,7 @@ contract PaytrTest is Test, Paytr_Helpers {
         assertGt(baseAsset.balanceOf(address(Paytr_Test)), 0); //the contract receives 10% of the interest amount as fee (param 9000 in setUp)
         assertApproxEqAbs(contractBaseAssetBalanceAfterPayOut, grossInterest * 1000 / 10000, 2); //value of 2 because of rounding differences from Comet and/or CometWrapper
 
-        // //comet (cbaseAssetv3) balances
+        //comet (cbaseAssetv3) balances
         assertEq(comet.balanceOf(alice), 0, "Alice's comet balance != 0");
         assertEq(comet.balanceOf(bob), 0, "Bob's comet balance != 0");
         assertEq(comet.balanceOf(charlie), 0, "Charlie's comet balance != 0");
@@ -762,6 +762,7 @@ contract PaytrTest is Test, Paytr_Helpers {
 
     function test_claimCometRewards() public {
         uint256 compBalanceBeforeClaiming = compToken.balanceOf(owner);
+        console2.log("Comp balance before claiming",compBalanceBeforeClaiming);
 
         vm.expectEmit();
         emit PaymentERC20Event(baseAssetAddress, bob, dummyFeeAddress, amountToPay, uint40(block.timestamp + 28 days), 0, paymentReference3);
@@ -777,18 +778,15 @@ contract PaytrTest is Test, Paytr_Helpers {
             false
         );
 
-        vm.warp(30 days);
+        vm.warp(block.timestamp + 30 days);
 
-        uint64 accruedRewards = IComet(cometAddress).baseTrackingAccrued(address(Paytr_Test));
-        console2.log("accruedRewards",accruedRewards);
-
-
-        // vm.prank(owner);
-        // Paytr_Test.claimCompRewards();
+        vm.prank(owner);
+        Paytr_Test.claimCompRewards();
 
         //COMP balance owner
-        // uint256 compBalanceAfterClaiming = compToken.balanceOf(owner);
-        // console2.log("$COMP balance after claiming",compBalanceAfterClaiming);
+        uint256 compBalanceAfterClaiming = compToken.balanceOf(owner);
+        console2.log("$COMP balance after claiming",compBalanceAfterClaiming);
+        assertGt(compBalanceAfterClaiming, compBalanceBeforeClaiming);
     }
 
     function test_sendBaseAssetBalance() public {

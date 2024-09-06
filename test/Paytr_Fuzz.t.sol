@@ -19,8 +19,8 @@ contract PaytrTest is Test, Paytr_Helpers {
 
     function setUp() public {
         Paytr_Test = new Paytr(
-            0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e,
-            0xC3836072018B4D590488b851d574556f2EeB895a,
+            cometAddress,
+            cometWrapperAddress,
             9000,
             7 days,
             365 days,
@@ -28,9 +28,9 @@ contract PaytrTest is Test, Paytr_Helpers {
             30
         );
 
-        vm.label(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e, "Comet");
-        vm.label(0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238, "USDC");
-        vm.label(0xC3836072018B4D590488b851d574556f2EeB895a, "Wrapper Contract");
+        vm.label(cometAddress, "Comet");
+        vm.label(baseAssetAddress, "USDC");
+        vm.label(cometWrapperAddress, "Wrapper Contract");
         vm.label(alice, "alice");
         vm.label(bob, "bob");
         vm.label(charlie, "charlie");
@@ -284,7 +284,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             _amount,
             _feeAmount,
             paymentReference1,
-            true
+            false
         );
 
         uint256 aliceBaseAssetBalanceBeforePayOut = getAlicesBaseAssetBalance();
@@ -296,17 +296,6 @@ contract PaytrTest is Test, Paytr_Helpers {
         
         //increase time to gain interest
         vm.warp(block.timestamp + 20 days);
-
-        vm.expectEmit(address(0x399F5EE127ce7432E4921a61b8CF52b0af52cbfE));
-
-        emit TransferWithReferenceAndFee(
-            baseAssetAddress,
-            Paytr_Test.getMapping(paymentReference1).payee,
-            Paytr_Test.getMapping(paymentReference1).amount,
-            paymentReference1,
-            Paytr_Test.getMapping(paymentReference1).feeAmount,
-            Paytr_Test.getMapping(paymentReference1).feeAddress
-        );
 
         vm.expectEmit(address(Paytr_Test));        
 
@@ -389,7 +378,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             _amount,
             0,
             paymentReference2,
-            true
+            false
         );
         vm.stopPrank();
 
@@ -425,17 +414,6 @@ contract PaytrTest is Test, Paytr_Helpers {
             Paytr_Test.getMapping(paymentReference1).amount,
             paymentReference1,
             0
-        );
-
-        vm.expectEmit(address(0x399F5EE127ce7432E4921a61b8CF52b0af52cbfE));
-
-        emit TransferWithReferenceAndFee(
-            baseAssetAddress,
-            Paytr_Test.getMapping(paymentReference2).payee,
-            Paytr_Test.getMapping(paymentReference2).amount,
-            paymentReference2,
-            Paytr_Test.getMapping(paymentReference2).feeAmount,
-            Paytr_Test.getMapping(paymentReference2).feeAddress
         );
 
         vm.expectEmit(address(Paytr_Test));
