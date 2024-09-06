@@ -19,8 +19,8 @@ contract PaytrTest is Test, Paytr_Helpers {
 
     function setUp() public {
         Paytr_Test = new Paytr(
-            0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e,
-            0xC3836072018B4D590488b851d574556f2EeB895a,
+            cometAddress,
+            cometWrapperAddress,
             9000,
             7 days,
             365 days,
@@ -28,9 +28,9 @@ contract PaytrTest is Test, Paytr_Helpers {
             30
         );
 
-        vm.label(0xAec1F48e02Cfb822Be958B68C7957156EB3F0b6e, "Comet");
-        vm.label(0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238, "USDC");
-        vm.label(0xC3836072018B4D590488b851d574556f2EeB895a, "Wrapper Contract");
+        vm.label(cometAddress, "Comet");
+        vm.label(baseAssetAddress, "USDC");
+        vm.label(cometWrapperAddress, "Wrapper Contract");
         vm.label(alice, "alice");
         vm.label(bob, "bob");
         vm.label(charlie, "charlie");
