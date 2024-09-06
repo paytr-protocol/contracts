@@ -60,7 +60,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference1,
-            0
+            false
         );
         
         //baseAsset balances
@@ -97,7 +97,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             10000,
             paymentReference1,
-            0
+            false
         );
         
         //baseAsset balances
@@ -133,7 +133,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference1,
-            0
+            false
         );
 
         //baseAsset balances
@@ -183,7 +183,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference1,
-            1
+            false
         );
         vm.stopPrank();
 
@@ -217,7 +217,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference2,
-            0       
+            false
         );
         vm.stopPrank();
 

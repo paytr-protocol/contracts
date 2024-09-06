@@ -55,7 +55,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference1,
-            0
+            false
         );
 
     }
@@ -72,7 +72,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             1000e6,
             paymentReference1,
-            0
+            false
         );
 
     }
@@ -89,7 +89,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference1,
-            0
+            false
         );
         
     }
@@ -106,7 +106,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference1,
-            0
+            false
         );
         
     }
@@ -123,7 +123,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference1,
-            0
+            false
         );
         
     }
@@ -140,7 +140,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference1,
-            0
+            false
         );
 
         vm.prank(bob);
@@ -151,7 +151,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference1,
-            0
+            false
         );
         
     }
@@ -168,7 +168,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference1,
-            0
+            false
         );
         
     }
@@ -185,7 +185,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference1,
-            0
+            false
         );
         
     }
@@ -233,7 +233,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference1,
-            0
+            false
         );
 
         vm.warp(block.timestamp + 15 days);
@@ -255,7 +255,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference1,
-            0
+            false
         );
 
         vm.warp(block.timestamp + 21 days);
@@ -279,11 +279,16 @@ contract PaytrTest is Test, Paytr_Helpers {
             amountToPay,
             0,
             paymentReference1,
-            0
+            false
         );
 
         updateDueDate(paymentReference1);
         vm.stopPrank();
+    }
+
+    function testFail_claimCompRewardsNotOwner() public {
+        vm.prank(bob);
+        Paytr_Test.claimCompRewards();
     }
 
     function testFail_changeParametersNotOwner() public {
