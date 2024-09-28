@@ -5,12 +5,11 @@ At the moment there's one main contact, `Paytr.sol`.
 
 Looking to use the Paytr protocol for your project? Check out our documentation [here](https://paytr.gitbook.io/product-docs/).
 
-## Truffle test
+## Forge test
 
-All the tests are located in the `test/paytr.test.js`file.
-Install the necessary dependencies like Ganache and Truffle.
+All the tests are located in the test folder.
+Install the necessary dependencies with `forge install`.
 
-We recommend to fork Goerli testnet and unlock an account which holds a lot of USDC, by using this command:
-`ganache --fork https://mainnet.infura.io/v3/YOURKEY --wallet.unlockedAccounts="0x7713974908Be4BEd47172370115e8b1219F4A5f0"`
-
-Open a new terminal window and run `truffle test --network develop`.
+You will need to run the tests on a Sepolia fork by using this command:
+`forge test --fork-url https://sepolia.infura.io/v3/YOURKEY` or
+`forge test --fork-url https://eth-sepolia.g.alchemy.com/v2/YOURKEY`
