@@ -1,0 +1,37 @@
+{
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "features": {
+  }
+}{
+  "name": "Paytr Protocol Dev Container",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  },
+  "settings": {
+    "terminal.integrated.defaultProfile.linux": "bash"
+  },
+  "extensions": [
+    "ms-vscode.vscode-typescript-tslint-plugin",
+    "esbenp.prettier-vscode",
+    "ms-python.python"
+  ],
+  "postCreateCommand": "npm install",
+  "remoteUser": "vscode"
+}{
+  "name": "Paytr Protocol Dev Container",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  },
+  "settings": {
+    "terminal.integrated.defaultProfile.linux": "bash"
+  },
+  "extensions": [
+    "ms-vscode.vscode-typescript-tslint-plugin",
+    "esbenp.prettier-vscode",
+    "ms-python.python"
+  ],
+  "postCreateCommand": "npm install",
+  "remoteUser": "vscode"
+}
