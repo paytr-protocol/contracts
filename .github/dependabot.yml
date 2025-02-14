@@ -1,0 +1,6 @@
+version: 2
+updates:
+  - package-ecosystem: "npm" # Example value, replace with appropriate ecosystem
+    directory: "/" # Location of package manifests
+    schedule:
+      interval: "weekly"
