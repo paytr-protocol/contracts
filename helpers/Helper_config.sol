@@ -5,13 +5,16 @@ import {Test, console2} from "forge-std/Test.sol";
 import {Paytr} from "../src/Paytr.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {Paytr_Helpers} from "../helpers/Helper_config.sol";
 
+interface IERC20Extended is IERC20 {
+    function decimals() external view returns (uint8);
+}
 interface IComet {
     function supply(address asset, uint amount) external;
     function withdraw(address asset, uint amount) external;
     function baseToken() external view returns (address);
     function allow(address manager, bool isAllowed) external;
+    function decimals() external view returns (uint8);
 }
 
 contract Paytr_Helpers is Test {
@@ -35,21 +38,41 @@ contract Paytr_Helpers is Test {
     // address owner = address(0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496);
     // address whale = address(0x75C0c372da875a4Fc78E8A37f58618a6D18904e8);
 
-    //BASE SEPOLIA USDC
-    IERC20 comet = IERC20(0x571621Ce60Cebb0c1D442B5afb38B1663C6Bf017);
-    address cometAddress = address(0x571621Ce60Cebb0c1D442B5afb38B1663C6Bf017);
-    IERC20 baseAsset = IERC20(IComet(0x571621Ce60Cebb0c1D442B5afb38B1663C6Bf017).baseToken());
-    address baseAssetAddress = IComet(0x571621Ce60Cebb0c1D442B5afb38B1663C6Bf017).baseToken();
-    IERC20 cometWrapper = IERC20(0x383eCD943E338357c0D81942933acA781C2E74cE);
-    address cometWrapperAddress = address(0x383eCD943E338357c0D81942933acA781C2E74cE);
-    IERC20 compToken = IERC20(0x2f535da74048c0874400f0371Fba20DF983A56e2);
+    //POLYGON USDC
+    IERC20 comet = IERC20(0xF25212E676D1F7F89Cd72fFEe66158f541246445);
+    address cometAddress = address(0xF25212E676D1F7F89Cd72fFEe66158f541246445);
+    IERC20 baseAsset = IERC20(IComet(0xF25212E676D1F7F89Cd72fFEe66158f541246445).baseToken());
+    address baseAssetAddress = IComet(0xF25212E676D1F7F89Cd72fFEe66158f541246445).baseToken();
+    IERC20 cometWrapper = IERC20(0x0cd478875450BcdC75E16FF6084aF3a4782610b9);
+    address cometWrapperAddress = address(0x0cd478875450BcdC75E16FF6084aF3a4782610b9);
+    IERC20 compToken = IERC20(0x8505b9d2254A7Ae468c0E9dd10Ccea3A837aef5c);
+    address ERC20FeeProxy = address(0x0DfbEe143b42B41eFC5A6F87bFD1fFC78c2f0aC9);
 
-    address alice = address(0x9);
-    address bob = address(0x2);
-    address charlie = address(0x3);
-    address dummyFeeAddress = address(0x4);
+    // address alice = address(0x9999);
+    // address bob = address(0x2222);
+    // address charlie = address(0x3333);
+    // address dummyFeeAddress = address(0x4444);
+    // address owner = address(0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496);
+    address whale = address(0x9c2bd617b77961ee2c5e3038dFb0c822cb75d82a);
+
+    //POLYGON USDT
+    // IERC20 comet = IERC20(0xaeB318360f27748Acb200CE616E389A6C9409a07);
+    // address cometAddress = address(0xaeB318360f27748Acb200CE616E389A6C9409a07);
+    // IERC20 baseAsset = IERC20(IComet(0xaeB318360f27748Acb200CE616E389A6C9409a07).baseToken());
+    // address baseAssetAddress = IComet(0xaeB318360f27748Acb200CE616E389A6C9409a07).baseToken();
+    // IERC20 cometWrapper = IERC20(0xc999F1577D684081588a483b5D3C470F319fd6BF);
+    // address cometWrapperAddress = address(0xc999F1577D684081588a483b5D3C470F319fd6BF);
+    // IERC20 compToken = IERC20(0x8505b9d2254A7Ae468c0E9dd10Ccea3A837aef5c);
+    // address ERC20FeeProxy = address(0x0DfbEe143b42B41eFC5A6F87bFD1fFC78c2f0aC9);    
+    // address whale = address(0x5a52E96BAcdaBb82fd05763E25335261B270Efcb);
+    
+    uint8 decimals = IERC20Extended(address(baseAsset)).decimals();
+
+    address alice = address(0x9999);
+    address bob = address(0x2222);
+    address charlie = address(0x3333);
+    address dummyFeeAddress = address(0x4444);
     address owner = address(0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496);
-    address whale = address(0xFaEc9cDC3Ef75713b48f46057B98BA04885e3391);
 
     bytes paymentReference1 = "0x494e56332d32343001";
     bytes paymentReference2 = "0x494e56332d32343002";
@@ -110,20 +133,19 @@ contract Paytr_Helpers is Test {
     }
 
     function transferBaseAsset() internal {
-        //deal baseAsset
-        //deal(address(baseAsset), alice, 10_000e6);
         vm.startPrank(whale);
-        baseAsset.transfer(alice, 50_000_000e6);
+        baseAsset.transfer(alice, 5_000_000 * (10 ** decimals));
         uint256 balanceAlice = baseAsset.balanceOf(alice);
-        assertEq(balanceAlice, 50_000_000e6);
-        //deal(address(baseAsset), bob, 10_000e6);
-        baseAsset.transfer(bob, 50_000_000e6);
+        assertEq(balanceAlice, 5_000_000 * (10 ** decimals));
+
+        baseAsset.transfer(bob, 5_000_000 * (10 ** decimals));
         uint256 balanceBob = baseAsset.balanceOf(bob);
-        assertEq(balanceBob, 50_000_000e6);
-        //deal(address(baseAsset), charlie, 10_000e6);
-        baseAsset.transfer(charlie, 50_000_000e6);
+        assertEq(balanceBob, 5_000_000 * (10 ** decimals));
+
+        baseAsset.transfer(charlie, 5_000_000 * (10 ** decimals));
         uint256 balanceCharlie = baseAsset.balanceOf(charlie);
-        assertEq(balanceCharlie, 50_000_000e6);
+        assertEq(balanceCharlie, 5_000_000 * (10 ** decimals));
+
         vm.stopPrank();
     }
 
@@ -137,12 +159,6 @@ contract Paytr_Helpers is Test {
         vm.stopPrank();
         vm.startPrank(charlie);
         baseAsset.approve(address(Paytr_Test), 2**256 - 1);
-        vm.stopPrank();
-    }
-
-    function updateDueDate(bytes storage _paymentrefence) internal {
-        vm.startPrank(alice);
-        Paytr_Test.releaseEscrowPayment(_paymentrefence);
         vm.stopPrank();
     }
 

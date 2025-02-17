@@ -27,7 +27,7 @@ interface IERC20FeeProxy {
 interface IWrapper {
     function deposit(uint256 assets, address receiver) external returns (uint256 shares);
     function redeem(uint256 assets, address receiver, address owner) external returns (uint256 shares);
-    function claimTo(address to) external;
+    function claimTo(address to, bool shouldAccrue) external;
 }
 
 /// @title   Paytr
@@ -50,8 +50,6 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
     error InvalidMaxDueDate();
     error InvalidMinAmount();
     error InvalidMaxArraySize();
-    error NotPayer();
-    error ReferenceNotInEscrow();
 
     address immutable public baseAsset;
     address public ERC20FeeProxyAddress;
@@ -151,79 +149,6 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
 
         emit PaymentERC20Event(baseAsset, _payee, _feeAddress, _amount, _dueDate, _feeAmount, _paymentReference);         
     }
-
-    /// @notice this function doesn't require a due date as parameter. It should be used for escrow payments where the release will be triggered manually.
-    /// @notice This function can't be used while it's paused.
-    /// @notice The sum of _amount and _feeAmount needs to be greater than the minTotalAmountParameter.
-    /// @param _payee The receiver of the payment.
-    /// @param _feeAddress When using an additional fee, this is the address that will receive the _feeAmount.
-    /// @param _amount The baseAsset amount in wei.
-    /// @param _feeAmount The total baseAsset fee amount in wei.
-    /// @param _paymentReference Reference of the related payment.
-    /// @param _shouldPayoutViaRequestNetwork This number determines whether or not the payout of the payment reference should run through the Request Network ERC20FeeProxy contract,
-    /// to make sure the Request Network protocol can detect this payment. Use 1 if you want to route the payout through Request Network or use 0 if you don't want this.
-    /// @dev Uses modifiers nonReentrant and whenNotPaused.
-    /// @dev The sum of _amount and _feeAmount needs to be greater than the minTotalAmountParameter.
-    /// @dev Make sure to add salt to and hash the _paymentReference to increase privacy and prevent double references.
-    /// @dev The parameter _shouldPayoutViaRequestNetwork is a uint8. Use 1-255 if you need the payout to go through the Request Network contract, use 0 if you don't need this.
-    function payInvoiceERC20Escrow(
-        address _payee,
-        address _feeAddress,
-        uint256 _amount,
-        uint256 _feeAmount,
-        bytes calldata _paymentReference,
-        bool _shouldPayoutViaRequestNetwork
-        ) external nonReentrant whenNotPaused {
-
-            PaymentERC20 storage paymentERC20 = paymentMapping[_paymentReference];
-            uint256 totalAmount = _amount + _feeAmount;
-
-            if(_amount == 0) revert ZeroAmount();
-            if(_payee == address(0)) revert ZeroPayeeAddress();
-            if(_feeAddress == address(0)) revert ZeroFeeAddress();
-            if(paymentERC20.amount != 0) revert PaymentReferenceInUse();
-            if(totalAmount < minTotalAmountParameter) revert InvalidTotalAmount();
-
-            IERC20(baseAsset).safeTransferFrom(msg.sender, address(this), totalAmount);
-            
-            uint256 cUsdcbalanceBeforeSupply = getContractCometBalance();
-            IERC20(baseAsset).forceApprove(cometAddress, totalAmount);
-            IComet(cometAddress).supply(baseAsset, totalAmount);
-            uint256 cUsdcbalanceAfterSupply = getContractCometBalance();
-            uint256 cUsdcAmountToWrap = cUsdcbalanceAfterSupply - cUsdcbalanceBeforeSupply;         
-
-            uint256 wrappedShares = IWrapper(wrapperAddress).deposit(cUsdcAmountToWrap, address(this));
-
-            paymentMapping[_paymentReference] = PaymentERC20({
-                amount: _amount,
-                feeAmount: _feeAmount,
-                wrapperSharesReceived: wrappedShares,
-                dueDate: 0,
-                payer: msg.sender,
-                payee: _payee,
-                feeAddress: _feeAddress,
-                shouldPayoutViaRequestNetwork: _shouldPayoutViaRequestNetwork
-            });
-
-        emit PaymentERC20Event(baseAsset, _payee, _feeAddress, _amount, 0, _feeAmount, _paymentReference);         
-    }
-
-    /// @notice this function updates the due date of a payment and should be used when releasing escrow payments.
-    /// @notice the original payment needs to have a due date of '0'.
-    /// @notice only the payer of the _paymentReference can call this function.
-    /// @notice the payout is not triggered by using this function. The payment reference is now marked to be due by updating the due date to the current block.timestamp + 770 minutes
-    /// @notice 770 minutes (0.5 days) are added to prevent paying and immediately releasing a payment, which would cause useless gas usage for the payout.
-    /// The _paymentReference will now be included in the next (automated) payout run, or can be triggered manually if needed
-    /// @param _paymentReference Reference of the related payment
-    function releaseEscrowPayment(bytes memory _paymentReference) external {
-        PaymentERC20 storage paymentERC20 = paymentMapping[_paymentReference];
-        
-        if(msg.sender != paymentERC20.payer) revert NotPayer();
-        if(paymentERC20.dueDate != 0) revert ReferenceNotInEscrow();
-        if(paymentERC20.amount == 0) revert NoPrePayment();
-
-        paymentERC20.dueDate = uint40(block.timestamp + 770 minutes);
-    }
                                                                                 
     /// @notice Allows the contract to pay payee (principal amount), payer (interest amount) and fee receiver (fee amount).
     /// This function cannot be paused.
@@ -298,7 +223,7 @@ contract Paytr is Ownable, Pausable, ReentrancyGuard {
     }
     
     function claimCompRewards() external onlyOwner {
-        IWrapper(wrapperAddress).claimTo(owner());
+        IWrapper(wrapperAddress).claimTo(owner(), true);
     }
 
     function claimBaseAssetBalance() external onlyOwner {
