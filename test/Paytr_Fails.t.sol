@@ -25,7 +25,7 @@ contract PaytrTest is Test, Paytr_Helpers {
             7 days,
             365 days,
             10e6,
-            30
+            15
         );
 
         vm.label(cometAddress, "Comet");
@@ -35,19 +35,21 @@ contract PaytrTest is Test, Paytr_Helpers {
         vm.label(bob, "bob");
         vm.label(charlie, "charlie");
         vm.label(address(this), "Paytr");
-        vm.label(0x399F5EE127ce7432E4921a61b8CF52b0af52cbfE, "ERC20FeeProxy contract");
+        vm.label(ERC20FeeProxy, "ERC20FeeProxy contract");
 
         transferBaseAsset();
         approveBaseAsset();
 
-        Paytr_Test.setERC20FeeProxy(0x399F5EE127ce7432E4921a61b8CF52b0af52cbfE);
+        Paytr_Test.setERC20FeeProxy(ERC20FeeProxy);
     }
 
-    function testFail_zeroAmountZeroFee() public {
+    function test_RevertIf_AmountIsZeroAndFeeIsZero() public {
 
         uint256 amountToPay = 0;
 
         vm.prank(alice);
+
+        vm.expectRevert(abi.encodeWithSignature("ZeroAmount()"));
         Paytr_Test.payInvoiceERC20(
             bob,
             dummyFeeAddress,
@@ -60,28 +62,31 @@ contract PaytrTest is Test, Paytr_Helpers {
 
     }
 
-    function testFail_zeroAmountWithFee() public {
-
+    function test_RevertIf_AmountIsZero() public {
         uint256 amountToPay = 0;
-
+        
         vm.prank(alice);
+        
+        vm.expectRevert(abi.encodeWithSignature("ZeroAmount()"));        
         Paytr_Test.payInvoiceERC20(
             bob,
             dummyFeeAddress,
             uint40(block.timestamp + 10 days),
             amountToPay,
-            1000e6,
+            1000 * (10 ** decimals),
             paymentReference1,
             false
         );
+        }
 
-    }
+    function test_RevertIf_MinimumAmountIsTooLow() public { //the min. amount is specified in the contract parameters.
 
-    function testFail_amountTooLow() public { //the min. amount is specified in the contract parameters.
-
-        uint256 amountToPay = 9e6;
+        uint256 amountToPay = 9 * (10 ** decimals);
 
         vm.prank(alice);
+
+        vm.expectRevert(abi.encodeWithSignature("InvalidTotalAmount()"));        
+
         Paytr_Test.payInvoiceERC20(
             bob,
             dummyFeeAddress,
@@ -94,11 +99,13 @@ contract PaytrTest is Test, Paytr_Helpers {
         
     }
 
-    function testFail_zeroPayeeAddress() public {
+    function test_RevertIf_PayeeAddressIsZeroAddress() public {
 
-        uint256 amountToPay = 1000e6;
+        uint256 amountToPay = 1000 * (10 ** decimals);
 
         vm.prank(alice);
+
+        vm.expectRevert(abi.encodeWithSignature("ZeroPayeeAddress()"));
         Paytr_Test.payInvoiceERC20(
             address(0),
             dummyFeeAddress,
@@ -111,11 +118,14 @@ contract PaytrTest is Test, Paytr_Helpers {
         
     }
 
-    function testFail_zeroFeeAddress() public {
+    function test_RevertIf_FeeAddressIsZeroAddress() public {
 
-        uint256 amountToPay = 1000e6;
+        uint256 amountToPay = 1000 * (10 ** decimals);
 
         vm.prank(alice);
+
+        vm.expectRevert(abi.encodeWithSignature("ZeroFeeAddress()"));
+
         Paytr_Test.payInvoiceERC20(
             bob,
             address(0),
@@ -128,11 +138,12 @@ contract PaytrTest is Test, Paytr_Helpers {
         
     }
 
-    function testFail_paymentReferenceInUse() public {
+    function test_RevertIf_PaymentReferenceIsInUse() public {
 
-        uint256 amountToPay = 1000e6;
+        uint256 amountToPay = 1000 * (10 ** decimals);
 
         vm.prank(alice);
+
         Paytr_Test.payInvoiceERC20(
             bob,
             dummyFeeAddress,
@@ -144,6 +155,8 @@ contract PaytrTest is Test, Paytr_Helpers {
         );
 
         vm.prank(bob);
+
+        vm.expectRevert(abi.encodeWithSignature("PaymentReferenceInUse()"));
         Paytr_Test.payInvoiceERC20(
             charlie,
             dummyFeeAddress,
@@ -156,11 +169,13 @@ contract PaytrTest is Test, Paytr_Helpers {
         
     }
 
-    function testFail_dueDateTooLow() public {
+    function test_revertIf_DueDateIsTooLow() public {
 
-        uint256 amountToPay = 1000e6;
+        uint256 amountToPay = 1000 * (10 ** decimals);
 
         vm.prank(alice);
+
+        vm.expectRevert(abi.encodeWithSignature("DueDateNotAllowed()"));
         Paytr_Test.payInvoiceERC20(
             bob,
             dummyFeeAddress,
@@ -173,11 +188,13 @@ contract PaytrTest is Test, Paytr_Helpers {
         
     }
 
-    function testFail_dueDateTooHigh() public {
+    function test_revertIf_DueDateIsTooHigh() public {
 
-        uint256 amountToPay = 1000e6;
+        uint256 amountToPay = 1000 * (10 ** decimals);
 
         vm.prank(alice);
+
+        vm.expectRevert(abi.encodeWithSignature("DueDateNotAllowed()"));
         Paytr_Test.payInvoiceERC20(
             bob,
             dummyFeeAddress,
@@ -190,40 +207,44 @@ contract PaytrTest is Test, Paytr_Helpers {
         
     }
 
-    function testFail_payOutArrayTooSmall() public {
+    function test_RevertIf_PayOutArrayIsTooSmall() public {
+        vm.expectRevert(abi.encodeWithSignature("InvalidArrayLength()"));
         Paytr_Test.payOutERC20Invoice(payOutArray);
     }
 
-    function testFail_payOutArrayTooBig() public {
-        payOutArray = [
-            paymentReference1,
-            paymentReference2,
-            paymentReference3,
-            paymentReference4,
-            paymentReference5,
-            paymentReference6,
-            paymentReference7,
-            paymentReference8,
-            paymentReference9,
-            paymentReference10,
-            paymentReference11,
-            paymentReference12,
-            paymentReference13,
-            paymentReference14,
-            paymentReference15,
-            paymentReference16            
-        ];
+    function test_RevertIf_PayOutArrayIsTooBig() public {
+        uint256 amountToPay = 1000 * (10 ** decimals);     
+        
+        for (uint8 i = 0; i < 16; i++) {
+            vm.prank(alice);
+            bytes memory newPaymentReference = abi.encodePacked(i);
+            payOutArray.push(newPaymentReference);
+            Paytr_Test.payInvoiceERC20(
+            bob,
+            dummyFeeAddress,
+            uint40(block.timestamp + 30 days),
+            amountToPay,
+            0,
+            newPaymentReference,
+            false
+            );
+
+        }
+        
+        vm.warp(block.timestamp + 33 days);
+        vm.expectRevert(abi.encodeWithSignature("InvalidArrayLength()"));
         Paytr_Test.payOutERC20Invoice(payOutArray);
     }
 
-    function testFail_noPrePayment() public {
-        payOutArray = [paymentReference1]; //this reference hasn't been prepaid in this function, so it should not be able to redeem it
-
+    function test_RevertIf_InvoiceNotPrePaid() public {
+        payOutArray = [paymentReference1]; //this reference hasn't been prepaid in this test, so it should not be able to redeem it
+        
+        vm.expectRevert(abi.encodeWithSignature("NoPrePayment()"));
         Paytr_Test.payOutERC20Invoice(payOutArray);
     }
 
-    function testFail_notDue() public {
-        uint256 amountToPay = 1000e6;
+    function test_RevertIf_InvoiceNotDue() public {
+        uint256 amountToPay = 1000 * (10 ** decimals);
 
         vm.prank(alice);
         Paytr_Test.payInvoiceERC20(
@@ -240,12 +261,13 @@ contract PaytrTest is Test, Paytr_Helpers {
 
         payOutArray = [paymentReference1];
 
+        vm.expectRevert(abi.encodeWithSignature("ReferenceNotDue()"));
         Paytr_Test.payOutERC20Invoice(payOutArray);
 
     }
 
-    function testFail_alreadyPaidOut() public {
-        uint256 amountToPay = 1000e6;
+    function test_RevertIf_InvoiceWasAlreadyPaidOut() public {
+        uint256 amountToPay = 1000 * (10 ** decimals);
 
         vm.prank(alice);
         Paytr_Test.payInvoiceERC20(
@@ -264,35 +286,23 @@ contract PaytrTest is Test, Paytr_Helpers {
 
         vm.warp(block.timestamp + 150 days);
         payOutArray = [paymentReference1];
+
+        vm.expectRevert(abi.encodeWithSignature("NoPrePayment()"));
         Paytr_Test.payOutERC20Invoice(payOutArray);
 
     }
 
-    function testFail_updateDueDateWhenDateIsNotZero() public {
-        uint256 amountToPay = 1000e6;
-        vm.startPrank(alice);
-
-        Paytr_Test.payInvoiceERC20(
-            bob,
-            dummyFeeAddress,
-            uint40(block.timestamp + 20 days),
-            amountToPay,
-            0,
-            paymentReference1,
-            false
-        );
-
-        updateDueDate(paymentReference1);
-        vm.stopPrank();
-    }
-
-    function testFail_claimCompRewardsNotOwner() public {
+    function test_RevertIf_ClaimCompRewardsNotOwner() public {
         vm.prank(bob);
+
+        vm.expectRevert("Ownable: caller is not the owner");
         Paytr_Test.claimCompRewards();
     }
 
-    function testFail_changeParametersNotOwner() public {
+    function test_RevertIf_ChangeParametersNotOwner() public {
         vm.prank(alice);
+
+        vm.expectRevert("Ownable: caller is not the owner");
         Paytr_Test.setContractParameters(
             8000,
             20 days,
@@ -302,8 +312,10 @@ contract PaytrTest is Test, Paytr_Helpers {
         );
     }
 
-    function testFail_changeParametersInvalidContractFeeModifier() public {
+    function test_RevertIf_ChangeParametersWithInvalidContractFeeModifier() public {
         vm.prank(owner);
+            
+        vm.expectRevert(abi.encodeWithSignature("InvalidContractFeeModifier()"));
         Paytr_Test.setContractParameters(
             1,
             20 days,
@@ -313,8 +325,10 @@ contract PaytrTest is Test, Paytr_Helpers {
         );
     }
 
-    function testFail_changeParametersInvalidMinDueDate() public {
+    function test_RevertIf_ChangeParametersWithInvalidMinDueDate() public {
         vm.prank(owner);
+
+        vm.expectRevert(abi.encodeWithSignature("InvalidMinDueDate()"));
         Paytr_Test.setContractParameters(
             8000,
             1 days,
@@ -324,8 +338,10 @@ contract PaytrTest is Test, Paytr_Helpers {
         );
     }
 
-    function testFail_changeParametersInvalidMaxDueDate() public {
+    function test_RevertIf_ChangeParametersWithInvalidMaxDueDate() public {
         vm.prank(owner);
+
+        vm.expectRevert(abi.encodeWithSignature("InvalidMaxDueDate()"));
         Paytr_Test.setContractParameters(
             8000,
             20 days,
@@ -335,8 +351,10 @@ contract PaytrTest is Test, Paytr_Helpers {
         );
     }
 
-    function testFail_changeParametersInvalidMinAmount() public {
+    function test_RevertIf_ChangeParametersWithInvalidMinAmount() public {
         vm.prank(owner);
+
+        vm.expectRevert(abi.encodeWithSignature("InvalidMinAmount()"));
         Paytr_Test.setContractParameters(
             8000,
             20 days,
@@ -348,8 +366,10 @@ contract PaytrTest is Test, Paytr_Helpers {
 
     //Paytr.sol doesn't check the maxAmount parameter, no test needed
 
-    function testFail_changeParametersInvalidMaxPayOutArraySize() public {
+    function test_RevertIf_ChangeParametersWithInvalidMaxPayOutArraySize() public {
         vm.prank(owner);
+
+        vm.expectRevert(abi.encodeWithSignature("InvalidMaxArraySize()"));
         Paytr_Test.setContractParameters(
             8000,
             20 days,
